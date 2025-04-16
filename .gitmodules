@@ -1,0 +1,3 @@
+[submodule "sim/z80cpu"]
+	path = sim/z80cpu
+	url = https://github.com/durgadas311/z80cpu.git
