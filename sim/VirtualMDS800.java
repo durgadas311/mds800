@@ -27,6 +27,7 @@ public class VirtualMDS800 {
 			props.load(cfg);
 			cfg.close();
 			System.err.format("Using config in %s\n", rc);
+			props.setProperty("configuration", rc);
 		} catch(Exception ee) {
 			System.err.format("No config file\n");
 		}
@@ -38,9 +39,10 @@ public class VirtualMDS800 {
 		MDSFrontPanel fp = new MDSFrontPanel(front_end, props);
 
 		MDS800 mds = new MDS800(props, fp);
+		fp.setSys(mds);
 		// All LEDs should be registered now...
-//		H89Operator op = new H89Operator(front_end, props, screen, lh);
-//		op.setCommander(h89.getCommander());
+		MDS800Operator op = new MDS800Operator(front_end, props);
+		op.setCommander(mds.getCommander());
 
 		front_end.pack();
 		front_end.setVisible(true);

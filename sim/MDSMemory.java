@@ -6,13 +6,17 @@ import java.io.*;
 import z80core.Memory;
 
 public class MDSMemory extends MDSRoms implements Memory {
-	// One single bank of (up to) 64K, plus ROMs...
 	private byte[] mem;
 	private boolean rom;
+	private Interruptor intr;
 
 	public MDSMemory(Properties props, Interruptor intr) {
 		super(props, intr);
+		this.intr = intr;
 		String s = props.getProperty("mds800_ram");
+		if (s == null) {
+			s = "16";
+		}
 		if (s.equals("64")) {
 			mem = new byte[64*1024];
 		} else if (s.equals("48")) {
@@ -26,13 +30,13 @@ public class MDSMemory extends MDSRoms implements Memory {
 
 	public int read(boolean rom, int bank, int address) {
 		address &= 0xffff; // necessary?
-		if (address < boot.top && intr.bootOn()) {
+		if (address < boot.length() && intr.bootOn()) {
 			return boot.read(address);
 		}
-		if (address >= mon.base) {
-			return mon.read(address);
+		if (address >= mon.base()) {
+			return mon.read(address - mon.base());
 		}
-		if (address >= mem.size) {
+		if (address >= mem.length) {
 			return 0;
 		}
 		return mem[address] & 0xff;
@@ -43,7 +47,10 @@ public class MDSMemory extends MDSRoms implements Memory {
 	}
 
 	public void write(int address, int value) {
-		mem[address & 0xffff] = (byte)(value & 0xff);
+		address &= 0xffff; // necessary?
+		if (address < mem.length) {
+			mem[address & 0xffff] = (byte)(value & 0xff);
+		}
 	}
 
 	public void reset() {}
@@ -59,7 +66,7 @@ public class MDSMemory extends MDSRoms implements Memory {
 	}
 
 	public String dumpDebug() {
-		String str = String.format("MDS800 %dK RAM\n", mem.size / 1024);
+		String str = String.format("MDS800 %dK RAM\n", mem.length / 1024);
 		str += mon.dumpDebug();
 		if (boot != null) {
 			str += boot.dumpDebug();

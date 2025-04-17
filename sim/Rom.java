@@ -2,6 +2,7 @@
 
 public interface Rom {
 	int length();
+	int base();
 	int read(int address);
 	void write(int address, int value);	// some are writable...
 	void writeEnable(boolean we);		//

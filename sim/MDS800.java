@@ -12,7 +12,7 @@ import java.util.Properties;
 import z80core.*;
 import z80debug.*;
 
-public class MDS800 implements Computer, Interruptor, Runnable {
+public class MDS800 implements MDS800Commander, Computer, Interruptor, Runnable {
 	private I8080 cpu;
 	private MDSFrontPanel fp;
 	private long clock;
@@ -84,6 +84,8 @@ public class MDS800 implements Computer, Interruptor, Runnable {
 
 		mem = new MDSMemory(props, this);
 
+		addDevice(fp);
+		// TODO: InterruptController...
 		INS8251 sp;
 		sp = new INS8251(props, "tty", 0xf4, 3, this);
 		addDevice(sp);
@@ -186,21 +188,9 @@ public class MDS800 implements Computer, Interruptor, Runnable {
 		}
 	}
 
-	// I.e. output from the H89 Console Port...
-	public InputStream getInputStream() {
-		// TODO: single instance
-		return (InputStream)new ConsoleInput();
-	}
-
-	// I.e. input to the H89 Console Port...
-	public OutputStream getOutputStream() {
-		// TODO: single instance
-		return (OutputStream)new ConsoleOutput();
-	}
-
-	// I.e. admin commands to virtual H89...
-	public H89Commander getCommander() {
-		return (H89Commander)this;
+	// I.e. admin commands to machine
+	public MDS800Commander getCommander() {
+		return (MDS800Commander)this;
 	}
 
 	// TODO: these may be separate classes...
@@ -209,6 +199,10 @@ public class MDS800 implements Computer, Interruptor, Runnable {
 	/// Interruptor interface implementation ///
 	public boolean bootOn() {
 		return fp.bootOn();
+	}
+
+	public boolean isHalted() {
+		return false; // TODO: get from CPU
 	}
 
 	public int registerINT(int irq) {
@@ -278,26 +272,7 @@ public class MDS800 implements Computer, Interruptor, Runnable {
 	}
 
 	/////////////////////////////////////////////
-	/// OutputStream interface implementation ///
-	class ConsoleOutput extends OutputStream {
-		public void write(int b) {
-			con.put(b, false);
-		}
-	}
-
-	////////////////////////////////////////////
-	/// InputStream interface implementation ///
-	class ConsoleInput extends InputStream {
-		public int read() {
-			return con.take(); // must sleep
-		}
-		public int available() {
-			return con.available();
-		}
-	}
-
-	/////////////////////////////////////////////
-	/// H89Commander interface implementation ///
+	/// MDS800Commander interface implementation ///
 	public Vector<String> sendCommand(String cmd) {
 		// TODO: stop Z80 during command? Or only pause it?
 		String[] args = cmd.split("\\s");
@@ -489,7 +464,6 @@ public class MDS800 implements Computer, Interruptor, Runnable {
 	// and other possible state. For IM0, Z80 will call as long as 'intrFetch' is true.
 	public int intrResp(Z80State.IntMode mode) {
 		if (mode != Z80State.IntMode.IM0) {
-			// H89 cannot operate in IM2.(?)  IM1 should never call this.
 			return 0; // TODO: What to return in this case?
 		}
 		int opCode = -1;
@@ -499,7 +473,7 @@ public class MDS800 implements Computer, Interruptor, Runnable {
 				return opCode;
 			}
 		}
-		// If no other hardware claims intr ack, use H89 hardware.
+		// If no other hardware claims intr ack, use ???
 		// This will always be a single-byte RST instruction.
 		int irq = Integer.numberOfTrailingZeros(intState & ~intMask);
 		if (irq > 7) {
@@ -622,7 +596,7 @@ public class MDS800 implements Computer, Interruptor, Runnable {
 				}
 			}
 			t0 = t1;
-			// TODO: trigger 1mS interrupt/status
+			fp.trigger1mS();
 		}
 		stopped = true;
 		stopWait.release();

@@ -34,6 +34,7 @@ public class EPROM implements Rom {
 	}
 
 	public int length() { return rom.length; }
+	public int base() { return org; }
 
 	public EPROM(String img, int base) throws Exception {
 		org = base;

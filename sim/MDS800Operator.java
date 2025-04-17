@@ -12,6 +12,7 @@ public class MDS800Operator implements ActionListener, ResetListener, Runnable
 {
 	JFrame _main;
 	MDS800Commander _cmdr = null;
+	LEDHandler _ledhandler;
 	JMenuBar _mb;
 	JMenu _sys_mu;
 	JMenu _dev_mu;

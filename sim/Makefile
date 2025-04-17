@@ -32,18 +32,24 @@ www: __FRC__
 VirtualMDS800.jar: all temp
 	echo "Main-Class: VirtualMDS800" >Manifest.txt
 	jar -cmf Manifest.txt VirtualMDS800.jar *.class \
-		*.rom -C temp .
+		icons/*.png *.rom -C temp .
 
 temp: __FRC__
 	mkdir -p temp
 	rm -rf temp/*
-	mkdir -p temp/docs
-	./mkAbout >temp/docs/About.html
-	cp www/*.html temp/docs/
 	cd temp; jar -xf ../z80cpu/z80core.jar
 	rm -rf temp/META-INF
 	cd temp; jar -xf ../z80cpu/z80debug.jar
 	rm -rf temp/META-INF
+
+# ...
+#	mkdir -p temp/docs
+#	./mkAbout >temp/docs/About.html
+#	cp www/*.html temp/docs/
+#	cd temp; jar -xf ../z80cpu/z80core.jar
+#	rm -rf temp/META-INF
+#	cd temp; jar -xf ../z80cpu/z80debug.jar
+#	rm -rf temp/META-INF
 
 mds800.tgz: __FRC__
 	cd ..; tar -czf sim/mds800.tgz sim/Makefile sim/mkAbout \
