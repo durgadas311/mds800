@@ -10,7 +10,8 @@ import javax.swing.border.*;
 import javax.swing.Timer;
 import javax.sound.sampled.*;
 
-public class MDSFrontPanel implements IODevice, ActionListener {
+public class MDSFrontPanel implements IODevice, InterruptController, Interruptor,
+					ActionListener {
 	static final private int INT0 = 0;
 	static final private int INT1 = 1;
 	static final private int INT2 = 2;
@@ -41,12 +42,21 @@ public class MDSFrontPanel implements IODevice, ActionListener {
 	ImageIcon key_off;
 
 	boolean clk1ms;
-	int ints;
+	int src1ms;
+	int intState;
+	int intMask;
+	private int[] intRegistry;
+	private int[] intLines;
 
 	public MDSFrontPanel(JFrame frame, Properties props) {
 		JPanel panel;
 		JPanel panel2;
 		JLabel lab;
+		intRegistry = new int[8];
+		intLines = new int[8];
+		Arrays.fill(intRegistry, 1); // src 0 is FP
+		Arrays.fill(intLines, 0);
+		src1ms = registerINT(1);
 		tiny = new Font("Sans-serif", Font.PLAIN, 8);
 		lesstiny = new Font("Sans-serif", Font.PLAIN, 10);
 		btns = new AbstractButton[16];
@@ -239,44 +249,118 @@ public class MDSFrontPanel implements IODevice, ActionListener {
 
 	public void setSys(MDS800 mds) {
 		sys = mds;
+		sys.addIntrController(this);
 	}
 
 	public void trigger1mS() {
 		clk1ms = true;
+//		raiseINT(1, src1ms);
 	}
 
-	////////////////////////////
+	private void setInt(int irq) {
+		intState |= (1 << irq);
+		this.irq[irq].set(true);
+		if ((intState & ~intMask) != 0) {
+			sys.raiseINT();
+		}
+	}
+
+	private void clearInt(int irq) {
+		intState &= ~(1 << irq);
+		this.irq[irq].set(false);
+		if ((intState & ~intMask) == 0) {
+			sys.lowerINT();
+		}
+	}
+
+	// sets a new mask, some bits might unmask...
+	private void maskInts(int msk) {
+		intMask = msk;
+		if ((intState & ~intMask) == 0) {
+			sys.lowerINT();
+		} else {
+			sys.raiseINT();
+		}
+	}
+
+	////////////////////////////////////
+	// InterruptController interface
+	public int readDataBus() {
+		// this also serves as INTA
+		int irq = Integer.numberOfTrailingZeros(intState & ~intMask);
+		if (irq > 7) {
+			return -1;
+		}
+		lowerINT(irq, 0); // in case it came from us
+		return (0xc7 | (irq << 3));
+	}
+
+	////////////////////////////////////
 	// IODevice interface
 	public void reset() {
-		ints = 0;
+		intState = 0;
+		intMask = 0;
 		setIntrs(0);
-		// reset 1mS clock?
+		run.set(false);
+		hlt.set(false);
+		clk1ms = false;
 	}
 
 	public int getBaseAddress() {
-		return 0xff;
+		return 0xfc;
 	}
 
 	public int getNumPorts() {
-		return 1;
+		return 4;
 	}
 
 	public int in(int port) {
-		int val = (clk1ms ? 1 : 0) |
-			(bootOn() ? 2 : 0);
-		clk1ms = false;
+		int off = port & 0x03;
+		int val = 0;
+		switch (off) {
+		case 0:
+			val = intMask;
+			break;
+		case 1:
+			break;
+		case 2:
+			break;
+		case 3:
+			val = (clk1ms ? 1 : 0) |
+				(bootOn() ? 2 : 0);
+			clk1ms = false;
+			break;
+		}
 		return val;
 	}
 
 	public void out(int port, int value) {
+		int off = port & 0x03;
+		switch (off) {
+		case 0:
+			maskInts(value);
+			break;
+		case 1:
+			// TODO: restore intr state ("pop")
+			// 0x12: init?
+			// 0x20: "restore operating level"
+			break;
+		case 2:
+			break;
+		case 3:
+			break;
+		}
 	}
 
 	public String getDeviceName() {
-		return "MDS FP";
+		return "MDS_FP";
 	}
 
 	public String dumpDebug() {
-		return "";
+		String ret = String.format("MDS Front Panel port %02x\n", getBaseAddress());
+		ret += String.format("INT st=%02x mk=%02x\n", intState, intMask);
+		ret += String.format("BOOT=%s  1mS=%s\n", bootOn(), clk1ms);
+		return ret;
 	}
 
 	public void setIntr(int src, boolean on) {
@@ -296,6 +380,11 @@ public class MDSFrontPanel implements IODevice, ActionListener {
 
 	public void setPower(boolean on) {
 		pwr.set(on);
+		if (on) {
+			sys.start();
+		} else {
+			sys.stop();
+		}
 	}
 
 	public void setHalt(boolean on) {
@@ -320,8 +409,28 @@ public class MDSFrontPanel implements IODevice, ActionListener {
 	}
 
 	private void doIntSw(int act) {
-		ints |= (1 << act);
-		// notify core...
+		raiseINT(act, 0);
+	}
+
+	////////////////////////////////////
+	// Interruptor interface
+	public int registerINT(int irq) {
+		int val = intRegistry[irq & 7]++;
+		return val;
+	}
+
+	public void raiseINT(int irq, int src) {
+		irq &= 7;
+		intLines[irq] |= (1 << src);
+		setInt(irq);
+	}
+
+	public void lowerINT(int irq, int src) {
+		irq &= 7;
+		intLines[irq] &= ~(1 << src);
+		if (intLines[irq] == 0) {
+			clearInt(irq);
+		}
 	}
 
 	public void actionPerformed(ActionEvent e) {
@@ -345,7 +454,7 @@ public class MDSFrontPanel implements IODevice, ActionListener {
 			sys.reset();
 			break;
 		case PWR:
-			pwr.set(key.isSelected());
+			setPower(key.isSelected());
 			break;
 		}
 	}

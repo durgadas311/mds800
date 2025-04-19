@@ -8,11 +8,11 @@ import z80core.Memory;
 public class MDSMemory extends MDSRoms implements Memory {
 	private byte[] mem;
 	private boolean rom;
-	private Interruptor intr;
+	private MDSFrontPanel fp;
 
-	public MDSMemory(Properties props, Interruptor intr) {
-		super(props, intr);
-		this.intr = intr;
+	public MDSMemory(Properties props, MDSFrontPanel fp) {
+		super(props);
+		this.fp = fp;
 		String s = props.getProperty("mds800_ram");
 		if (s == null) {
 			s = "16";
@@ -30,7 +30,7 @@ public class MDSMemory extends MDSRoms implements Memory {
 
 	public int read(boolean rom, int bank, int address) {
 		address &= 0xffff; // necessary?
-		if (address < boot.length() && intr.bootOn()) {
+		if (address < boot.length() && fp.bootOn()) {
 			return boot.read(address);
 		}
 		if (address >= mon.base()) {

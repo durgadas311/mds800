@@ -12,7 +12,7 @@ import java.util.Properties;
 import z80core.*;
 import z80debug.*;
 
-public class MDS800 implements MDS800Commander, Computer, Interruptor, Runnable {
+public class MDS800 implements MDS800Commander, Computer, Runnable {
 	private I8080 cpu;
 	private MDSFrontPanel fp;
 	private long clock;
@@ -24,11 +24,6 @@ public class MDS800 implements MDS800Commander, Computer, Interruptor, Runnable 
 	private boolean running;
 	private boolean stopped;
 	private Semaphore stopWait;
-	private boolean doReset;
-	private int[] intRegistry;
-	private int[] intLines;
-	private int intState;
-	private int intMask;
 	private Vector<ClockListener> clks;
 	private Vector<TimeListener> times;
 	private	int cpuSpeed = 2000000;
@@ -41,12 +36,6 @@ public class MDS800 implements MDS800Commander, Computer, Interruptor, Runnable 
 	public MDS800(Properties props, MDSFrontPanel fp) {
 		String s;
 		this.fp = fp;
-		intRegistry = new int[8];
-		intLines = new int[8];
-		Arrays.fill(intRegistry, 0);
-		Arrays.fill(intLines, 0);
-		intState = 0;
-		intMask = 0;
 		running = false;
 		stopped = true;
 		stopWait = new Semaphore(0);
@@ -81,15 +70,16 @@ public class MDS800 implements MDS800Commander, Computer, Interruptor, Runnable 
 		} else {
 			System.err.format("Using configuration from %s\n", s);
 		}
+		fp.setSys(this);
 
-		mem = new MDSMemory(props, this);
+		mem = new MDSMemory(props, fp);
 
 		addDevice(fp);
 		// TODO: InterruptController...
 		INS8251 sp;
-		sp = new INS8251(props, "tty", 0xf4, 3, this);
+		sp = new INS8251(props, "tty", 0xf4, 3, fp);
 		addDevice(sp);
-		sp = new INS8251(props, "crt", 0xf6, 3, this);
+		sp = new INS8251(props, "crt", 0xf6, 3, fp);
 		addDevice(sp);
 
 		s = props.getProperty("mds800_trace");
@@ -100,7 +90,6 @@ public class MDS800 implements MDS800Commander, Computer, Interruptor, Runnable 
 		boolean wasRunning = running;
 		trc.setTrace("off");
 		// TODO: reset other interrupt state? devices should do that...
-		intMask = 0;
 		clock = 0;
 		stop();
 		cpu.reset();
@@ -202,49 +191,19 @@ public class MDS800 implements MDS800Commander, Computer, Interruptor, Runnable 
 	}
 
 	public boolean isHalted() {
-		return false; // TODO: get from CPU
+		return cpu.isHalted();
 	}
 
-	public int registerINT(int irq) {
-		int val = intRegistry[irq & 7]++;
-		// TODO: check for overflow (32 bits max?)
-		return val;
+	public synchronized void raiseINT() {
+		cpu.setINTLine(true);
 	}
-	public synchronized void raiseINT(int irq, int src) {
-		irq &= 7;
-		intLines[irq] |= (1 << src);
-		intState |= (1 << irq);
-		if ((intState & ~intMask) != 0) {
-			cpu.setINTLine(true);
-		}
-	}
-	public synchronized void lowerINT(int irq, int src) {
-		irq &= 7;
-		intLines[irq] &= ~(1 << src);
-		if (intLines[irq] == 0) {
-			intState &= ~(1 << irq);
-			if ((intState & ~intMask) == 0) {
-				cpu.setINTLine(false);
-			}
-		}
-	}
-	public void blockInts(int msk) {
-		intMask |= msk;
-		if ((intState & ~intMask) == 0) {
-			cpu.setINTLine(false);
-		}
-	}
-	public void unblockInts(int msk) {
-		intMask &= ~msk;
-		if ((intState & ~intMask) != 0) {
-			cpu.setINTLine(true);
-		}
+	public synchronized void lowerINT() {
+		cpu.setINTLine(false);
 	}
 	public void triggerNMI() {
 		cpu.triggerNMI();
 	}
 	public void triggerRESET() {
-		doReset = true;
 	}
 	// TODO: no longer used...
 	public void timeout2ms() {
@@ -473,16 +432,6 @@ public class MDS800 implements MDS800Commander, Computer, Interruptor, Runnable 
 				return opCode;
 			}
 		}
-		// If no other hardware claims intr ack, use ???
-		// This will always be a single-byte RST instruction.
-		int irq = Integer.numberOfTrailingZeros(intState & ~intMask);
-		if (irq > 7) {
-			// what to do? this is NOT the right action...
-			irq = 7;
-		}
-		// Construct RST instruction form irq.
-		opCode = 0xc7 | (irq << 3);
-		// TODO: prevent accidental subsequent calls?
 		return opCode;
 	}
 
@@ -545,8 +494,10 @@ public class MDS800 implements MDS800Commander, Computer, Interruptor, Runnable 
 		String xtra = null;
 		int clk = 0;
 		int limit = 0;
+		boolean halted = false;
 		while (running) {
 			cpuLock.lock(); // This might sleep waiting for GUI command...
+			fp.setRun(true);
 			limit += cpuCycle1ms;
 			long t0 = System.nanoTime();
 			int traced = 0; // assuming any tracing cancels 2mS accounting
@@ -555,17 +506,16 @@ public class MDS800 implements MDS800Commander, Computer, Interruptor, Runnable 
 				boolean trace = trc.preTrace(PC, clock);
 				if (trace) {
 					++traced;
-					xtra = String.format("<%02x/%02x>%s",
-						intState, intMask,
-						cpu.isINTLine() ? " INT" : "");
+					xtra = cpu.isINTLine() ? " INT" : "";
 				}
-				doReset = false;
 				clk = cpu.execute();
+				boolean hlt = cpu.isHalted();
+				if (hlt != halted) {
+					fp.setHalt(hlt);
+					halted = hlt;
+				}
 				if (trace) {
 					trc.postTrace(PC, clk, xtra);
-				}
-				if (doReset) {
-					break; // while still "running"
 				}
 				if (clk < 0) {
 					clk = -clk;
@@ -576,12 +526,6 @@ public class MDS800 implements MDS800Commander, Computer, Interruptor, Runnable 
 			cpuLock.unlock();
 			if (!running) {
 				break;
-			}
-			if (doReset) {
-				running = false;
-				reset();
-				running = true;
-				continue;
 			}
 			long t1 = System.nanoTime();
 			if (traced == 0) {
@@ -598,6 +542,7 @@ public class MDS800 implements MDS800Commander, Computer, Interruptor, Runnable 
 			t0 = t1;
 			fp.trigger1mS();
 		}
+		fp.setRun(false);
 		stopped = true;
 		stopWait.release();
 	}
@@ -733,11 +678,6 @@ public class MDS800 implements MDS800Commander, Computer, Interruptor, Runnable 
 		}
 		ret += "\n";
 		ret += String.format("2mS Backlog = %d nS\n", backlogNs);
-		ret += "INT = {";
-		for (int x = 0; x < 8; ++x) {
-			ret += String.format(" %x", intLines[x]);
-		}
-		ret += String.format(" } %02x %02x\n", intState, intMask);
 		return ret;
 	}
 }

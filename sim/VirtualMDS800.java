@@ -39,7 +39,6 @@ public class VirtualMDS800 {
 		MDSFrontPanel fp = new MDSFrontPanel(front_end, props);
 
 		MDS800 mds = new MDS800(props, fp);
-		fp.setSys(mds);
 		// All LEDs should be registered now...
 		MDS800Operator op = new MDS800Operator(front_end, props);
 		op.setCommander(mds.getCommander());
@@ -47,6 +46,7 @@ public class VirtualMDS800 {
 		front_end.pack();
 		front_end.setVisible(true);
 
-		mds.start(); // spawns its own thread... returns immediately
+		// do not start until power turned on
+		// mds.start(); // spawns its own thread... returns immediately
 	}
 }

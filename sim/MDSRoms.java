@@ -10,7 +10,7 @@ public class MDSRoms {
 	protected Rom boot;	// 256 at 0x0000
 	protected int monMask;
 
-	public MDSRoms(Properties props, Interruptor intr) {
+	public MDSRoms(Properties props) {
 		InputStream fi = null;
 		String s = props.getProperty("mds800_mon");
 		if (s == null) {
