@@ -28,16 +28,18 @@ dcredy	equ	0001b	; dstat floppy ready
 dcfini	equ	0100b	; dstat I/O finished
 
 promda	equ	0f0h
-promah	equ	0f1h	; write (+ctrl bits)
-promst	equ	0f1h	; read
-promct	equ	0f1h	; write
-promal	equ	0f2h
-intctl	equ	0f3h	; write
+promah	equ	0f1h	; write (ah+ctrl bits) direct to programmer
+promst	equ	0f1h	; read - direct from programmer
+promal	equ	0f2h	; write - direct to programmer
+intctl	equ	0f3h	; write - bit 7 enables TTY/CRT/PTP/PTR/LPT intrs
+			;	  6:0 reset intr sources, see intsts
 ; values for promah:
 promam	equ	0fffh	; PROM address mask - 4K max
 promsX	equ	00ffh	; socket X (low byte unused?)
 promsY	equ	30f0h	; socket Y (low byte unused?)
 promsZ	equ	200fh	; socket Z (low byte unused?)
+; intctl:
+chrie	equ	10000000b	; enable all char I/O interrupts
 
 ttydat	equ	0f4h	; TTY: data
 ttysts	equ	0f5h	; read
@@ -47,14 +49,30 @@ crtsts	equ	0f7h	; read
 crtctl	equ	0f7h	; write
 
 ptdat	equ	0f8h	; read PTR, write PTP
-ptsts	equ	0f9h	; read
-ptctl	equ	0f9h	; write
-intsts	equ	0fah	; read
-lptdat	equ	0fah	; write
-lptsts	equ	0fbh	; read
-lptctl	equ	0fbh	; write
+ptsts	equ	0f9h	; read - PTR/P status
+ptctl	equ	0f9h	; write - PTR/P control
+intsts	equ	0fah	; read - TTY/CRT/PTP/PTR/LPT intr status
+lptdat	equ	0fah	; write - LPT data out
+lptsts	equ	0fbh	; read - LPT status
+lptctl	equ	0fbh	; write - LPT control
+; ptsts:
+ptrrdy	equ	00000001b	; PTR data ready
+ptrsys	equ	00000010b	; PTR system ready
+ptprdy	equ	00000100b	; PTP ready for data
+ptpsys	equ	00001000b	; PTP system ready
+ptpchd	equ	00010000b	; PTP chad error
+ptplow	equ	00100000b	; PTP tape low
+; ptctl:
+ttyadv	equ	00000010b	; TTY adv rdr?
+ptrdir	equ	00000100b	; PTR direction?
+ptrdrv	equ	00001000b	; PTR drive?
+ptpfor	equ	00010000b	; PTP forward? (direction?)
+ptpadv	equ	00100000b	; PTP advance?
+; lptsts:
+lptbsy	equ	00000001b	; LPT busy (data)
+lptstt	equ	00000010b	; LPT stat? error/ready?
 
-;intsts:
+;intsts and intctl:
 ttyoi	equ	00000001b
 ttyii	equ	00000010b
 ptpoi	equ	00000100b
@@ -78,7 +96,7 @@ im1$7	equ	im1+im2+im3+im4+im5+im6+im7
 rstint	equ	0fdh	; 3/C8	["restore operating level"]
 ioFE	equ	0feh	; 2/C8	[not used?]
 fpsw	equ	0ffh	; read - front panel switches and state
-fpxxx	equ	0001b	; unknown state machine
+fp1ms	equ	0001b	; 1mS clock?
 bsw	equ	0010b	; BOOT switch
 
 ; Appears to have a sophisticated priority interrupt controller,
@@ -255,13 +273,13 @@ L00c6:	db	4fh,3eh	; 'O>' or L3e4f or 79,62 or DS 2
 ; copied into high RAM page - xxC8H - also top of stack
 ;
 monstk:	ds	0	; stop of stack for monitor
-usrstk	equ	monstk-8	; offset in next page lower
+usrtop	equ	monstk-8	; monstk - 264
 
 savDE:	dw	0ddeeh	; saved DE
 savBC:	dw	0bbcch	; saved BC
 savIM:	dw	0fe00h	; saved port FC
 savPSW:	dw	0aaffh	; saved PSW
-savSP:	dw	usrstk	; saved SP (modified for RAM size)
+savSP:	dw	usrtop	; saved SP (modified for RAM size)
 savlen	equ	$-savDE
 
 ; routine to resume user code
@@ -308,7 +326,7 @@ coldsf:	jmp	colds		;; f800: c3 30 f8    .0.
 	jmp	Lfdcb		;; f815: chkcfg - get iobyte
 	jmp	Lfdcf		;; f818: setcfg - set iobyte
 	jmp	Lfdd4		;; f81b: ramsiz - 16K: B=3EH, A=0C0H
-	jmp	Lfddc		;; f81e: usrio - C=fnc vec to call
+	jmp	Lfddc		;; f81e: iodef - define usr i/o - C=fnc vec, DE=rtn
 	jmp	Lffc6		;; f821: nop - imm return
 
 	db	9,15h
@@ -480,7 +498,7 @@ Ccmd:	call	Lff94		;; f945: cd 94 ff    ...
 	push	b		;; f951: c5          .
 	mvi	c,000h		;; f952: 0e 00       ..
 Lf954:	mov	a,b		;; f954: 78          x
-	out	promct		;; f955: d3 f1       ..
+	out	promah		;; f955: d3 f1       ..
 	mov	a,c		;; f957: 79          y
 	out	promal		;; f958: d3 f2       ..
 Lf959	equ	$-1
@@ -967,6 +985,7 @@ brkchk:	call	consts		;; fcb0: cd a4 fd    ...
 	rz			;; fcb4: c8          .
 	jmp	echin		;; fcb5: c3 c7 ff    ...
 
+; get char from RDR:, return CY on timeout
 rdrin:	push	h		;; fcb8: e5          .
 	lxi	h,iobyte	;; fcb9: 21 03 00    ...
 	mov	a,m		;; fcbc: 7e          ~
@@ -975,11 +994,11 @@ rdrin:	push	h		;; fcb8: e5          .
 ; TTY PTR
 	mvi	a,002h		;; fcc2: 3e 02       >.
 	out	ptctl		;; fcc4: d3 f9       ..
-	mvi	h,0fah		;; fcc6: 26 fa       &.
+	mvi	h,250	; approx 1/4 sec
 Lfcc8:	in	ttysts		;; fcc8: db f5       ..
 	ani	002h		;; fcca: e6 02       ..
 	jnz	Lfcda		;; fccc: c2 da fc    ...
-	call	Lfe3b	; wait for FP condition(?)
+	call	wt1ms	; wait for 1ms tick
 	dcr	h		;; fcd2: 25          %
 	jnz	Lfcc8		;; fcd3: c2 c8 fc    ...
 Lfcd6:	xra	a		;; fcd6: af          .
@@ -997,11 +1016,11 @@ Lfcdf:	cpi	004h		;; fcdf: fe 04       ..
 ; high speed reader - PTR:
 	mvi	a,008h		;; fce4: 3e 08       >.
 	out	ptctl		;; fce6: d3 f9       ..
-	mvi	h,250		;; fce8: 26 fa       &.
+	mvi	h,250	; approx 1/4 sec
 Lfcea:	in	ptsts		;; fcea: db f9       ..
 	ani	001h		;; fcec: e6 01       ..
 	jnz	Lfcfb		;; fcee: c2 fb fc    ...
-	call	Lfe3b	; wait for FP condition(?)
+	call	wt1ms	; wait for 1ms tick
 	dcr	h		;; fcf4: 25          %
 	jnz	Lfcea		;; fcf5: c2 ea fc    ...
 	jmp	Lfcd6		;; fcf8: c3 d6 fc    ...
@@ -1016,6 +1035,7 @@ Lfd00:	pop	h		;; fd00: e1          .
 	mvi	a,LOW ur1in	;; fd03: 3e ee       >.
 	jz	usrvec		;; fd05: ca 0a fd    ...
 	mvi	a,LOW ur2in	;; fd08: 3e f1       >.
+; call a user device vector (A={e8,eb,ee,f1,f4,f7,fa,fd})
 usrvec:	push	h		;; fd0a: e5          .
 	lhld	ramtop		;; fd0b: 2a 04 00    *..
 	mov	l,a		;; fd0e: 6f          o
@@ -1133,9 +1153,10 @@ Lfdcf:	mov	a,c		;; fdcf: 79          y
 Lfdd4:	lda	ramtop+1
 	dcr	a		; last page for users
 	mov	b,a
-	mvi	a,LOW usrstk	; offset of user stack
+	mvi	a,LOW usrtop	; offset of user top RAM
 	ret
 
+; Define user I/O routine. C=vector, DE=routine
 Lfddc:	push	h		;; fddc: e5          .
 	push	b		;; fddd: c5          .
 	lhld	ramtop		;; fdde: 2a 04 00    *..
@@ -1147,8 +1168,8 @@ Lfddc:	push	h		;; fddc: e5          .
 	add	c		;; fdea: 81          .
 	mov	c,a		;; fdeb: 4f          O
 	mvi	b,000h		;; fdec: 06 00       ..
-	dad	b		;; fdee: 09          .
-	mov	m,e		;; fdef: 73          s
+	dad	b	; point to vector
+	mov	m,e	; install routine from DE
 	inx	h		;; fdf0: 23          #
 	mov	m,d		;; fdf1: 72          r
 	pop	b		;; fdf2: c1          .
@@ -1203,9 +1224,9 @@ Lfe29:	push	psw		;; fe29: f5          .
 	call	hex2a		;; fe35: cd 0e fe    ...
 	jmp	lstbrk		;; fe38: c3 7a fd    .z.
 
-Lfe3b:	in	fpsw		;; fe3b: db ff       ..
-	ani	fpxxx		;; fe3d: e6 01       ..
-	jz	Lfe3b		;; fe3f: ca 3b fe    .;.
+wt1ms:	in	fpsw		;; fe3b: db ff       ..
+	ani	fp1ms		;; fe3d: e6 01       ..
+	jz	wt1ms		;; fe3f: ca 3b fe    .;.
 	ret			;; fe42: c9          .
 
 ; reg-id match
