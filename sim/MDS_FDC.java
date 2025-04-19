@@ -8,10 +8,11 @@ import java.awt.event.*;
 import java.io.*;
 import javax.swing.*;
 import javax.swing.border.*;
+import java.util.concurrent.Semaphore;
 
 // TODO: add GUI...
 public class MDS_FDC extends RackUnit implements DiskController,
-					ActionListener, MouseListener {
+				ActionListener, MouseListener, Runnable {
 	// iopb:
 	//	db	ctrl: xxDDxCCC C=command, D=unit
 	//	...
@@ -30,10 +31,23 @@ public class MDS_FDC extends RackUnit implements DiskController,
 	private static final int MSK_CMD	= 0x07;
 	private static final int MSK_UNIT	= 0x30;
 	private static final int SHF_UNIT	= 4;
+	private static final int MSK_SEC	= 0x1f; // why?
+	private static final int MSK_TRK	= 0x7f; // needed?
 
+	private static final int CMD_NONE	= 0;
+	
 	private static final int CMD_RESTORE	= 3;
 	private static final int CMD_READ	= 4;
 	private static final int CMD_WRITE	= 6;
+
+	private static final int RBYTE_DD = 0x01; // deleted data
+	private static final int RBYTE_CE = 0x02; // CRC error
+	private static final int RBYTE_SE = 0x04; // seek error
+	private static final int RBYTE_AE = 0x08; // adr error
+	private static final int RBYTE_DE = 0x10; // data over/under run
+	private static final int RBYTE_WP = 0x20; // write protect
+	private static final int RBYTE_WE = 0x40; // write error
+	private static final int RBYTE_NRDY = 0x80; // not ready
 
 	private Font tiny;
 
@@ -50,6 +64,7 @@ public class MDS_FDC extends RackUnit implements DiskController,
 	private int track;
 	private int head;
 	private int sector;
+	private int multi;	// sector count
 	private int[] sectorLen;
 	private int[] currTrack;
 	private boolean intrEnable;
@@ -57,7 +72,6 @@ public class MDS_FDC extends RackUnit implements DiskController,
 	private boolean protect;
 	private boolean error;
 	private boolean active;
-	private boolean multi;
 	private GenericFloppyDrive[] units;
 	private GenericFloppyDrive curr;
 	private LED[] leds;
@@ -68,6 +82,11 @@ public class MDS_FDC extends RackUnit implements DiskController,
 	private boolean dirty;
 	private int dataIdx;
 	private byte[] curBuf;
+	private Semaphore cmdWait;
+	private int state;
+	private static final int DONE = 0;
+	private static final int IOPB = 1;
+	private static final int DATA = 2;
 
 	private int iopbAdr;
 	private int resType;
@@ -178,6 +197,7 @@ public class MDS_FDC extends RackUnit implements DiskController,
 		prot = new JCheckBox("Protect");
 		timer = new javax.swing.Timer(500, this);
 		curBuf = new byte[128];
+		command = CMD_NONE;
 		name = "MDS_FDC";	// TODO: allow more than one?
 		this.intr = intr;
 		String s = props.getProperty("fdc_intr");
@@ -267,12 +287,15 @@ public class MDS_FDC extends RackUnit implements DiskController,
 						MDSMemory mem, Interruptor intr) {
 		// TODO: handle LUN...
 		super(4);	// 4U height
+		cmdWait = new Semaphore(0);
 		tiny = new Font("Sans-serif", Font.PLAIN, 8);
 		FDCctrl(props, label, base, irq, mem, intr);
 		FDCpanel(this, 0, 2);
 		// power is off initially...
 		pwrOn = false;
 		reset();
+		Thread t = new Thread(this);
+		t.start();
 	}
 
 	private File pickFile(String purpose) {
@@ -309,6 +332,7 @@ public class MDS_FDC extends RackUnit implements DiskController,
 		File f = pickFile(String.format("Mount FD%d", x));
 		if (f == null) {
 			units[x].insertDisk(null);
+			fdcStat &= ~(1 << x);
 			return;
 		}
 		Vector<String> args = new Vector<String>();
@@ -324,6 +348,9 @@ public class MDS_FDC extends RackUnit implements DiskController,
 	private void mountDisk(int x, File f, Vector<String> args) {
 		fds[x].setToolTipText(f.getName());
 		units[x].insertDisk(SectorFloppyImage.getDiskette(units[x], args));
+		if (units[x].isReady()) {
+			fdcStat |= (1 << x);
+		}
 	}
 
 	// Conditions affecting interrupts have changed, ensure proper signal.
@@ -343,12 +370,12 @@ public class MDS_FDC extends RackUnit implements DiskController,
 			return;
 		}
 		active = false;
-		// must have been and I/O command...
-//		if (flushBuf() < 0) {
-//			cmdError(bit(CRU_DAT_ERR));
-//		} else {
-//			cmdComplete();
-//		}
+		// must have been an I/O command...
+		if (flushBuf() < 0) {
+			cmdError(RBYTE_DE);
+		} else {
+			cmdComplete();
+		}
 		dataIdx = 128;
 		chkIntr();
 	}
@@ -372,7 +399,7 @@ public class MDS_FDC extends RackUnit implements DiskController,
 			leds[u].set(true);
 			if (!curr.isReady()) {
 				selectErr = true;
-//				status |= bit(CRU_DRV_NRDY);
+				cmdError(RBYTE_NRDY);
 			}
 			if (curr.isWriteProtect()) {
 				protect = true;
@@ -380,7 +407,6 @@ public class MDS_FDC extends RackUnit implements DiskController,
 		} else {
 			timer.removeActionListener(this);
 			selectErr = true;
-//			status |= bit(CRU_DRV_NRDY);
 			unit = -1;
 			curr = null;
 		}
@@ -388,22 +414,67 @@ public class MDS_FDC extends RackUnit implements DiskController,
 
 	private void cmdError(int bits) {
 		error = true;
-//		status &= ~bit(CRU_XFER_RDY);
-//		status &= ~bit(CRU_CTRL_BSY);
-		status |= bits;
-//		status |= bit(CRU_INTR);
-	}
-
-	private void cmdXfer() {
-//		status |= bit(CRU_XFER_RDY);
-//		status |= bit(CRU_INTR);
+		resType = 0b11;
+		resByte |= bits;
+		fdcStat |= STS_DONE;
+		state = DONE;
+		active = false;
 	}
 
 	private void cmdComplete() {
-//		status &= ~bit(CRU_XFER_RDY);
-//		status &= ~bit(CRU_CTRL_BSY);
-//		status |= bit(CRU_OPCOMPLETE);
-//		status |= bit(CRU_INTR);
+		fdcStat |= STS_DONE;
+		state = DONE;
+		active = false;
+	}
+
+	private int nextSector() {
+		--multi;
+		++sector;
+		if (sector > 26) {
+			sector = 1;
+			++track;
+			if (track > 76) {
+				cmdError(RBYTE_SE);
+				return - 1;
+			}
+		}
+		return 0;
+	}
+
+	private void cmdXfer(boolean write) {
+		if (write) {
+			curBuf[dataIdx++] = (byte)mem.read(iopbDma++);
+			if (dataIdx >= 128) {
+				if (flushBuf() != 0) {
+					cmdError(RBYTE_WE);
+					return;
+				}
+				if (multi == 0) {
+					cmdComplete();
+					return;
+				}
+				if (nextSector() != 0) {
+					return;
+				}
+			}
+		} else {
+			// TODO: mutex?
+			mem.write(iopbDma++, curBuf[dataIdx++]);
+			dirty = true;
+			if (dataIdx >= 128) {
+				if (multi == 0) {
+					cmdComplete();
+					return;
+				}
+				if (nextSector() != 0) {
+					return;
+				}
+				if (fillBuf() < 0) {
+					cmdError(RBYTE_DE);
+					return;
+				}
+			}
+		}
 	}
 
 	private void restoreDrive() {
@@ -429,11 +500,16 @@ public class MDS_FDC extends RackUnit implements DiskController,
 	}
 
 	private void doCommand() {
-
 		// TODO: pass this off to a thread...
 		fdcStat &= ~STS_DONE;
 		resType = 0;
 		resByte = 0;
+		state = IOPB;
+		active = true;
+		cmdWait.release();
+	}
+
+	private void getIopb() {
 		iopbOp = mem.read(iopbAdr);
 		iopbCmd = mem.read(iopbAdr + 1);
 		iopbSC = mem.read(iopbAdr + 2);
@@ -441,67 +517,69 @@ public class MDS_FDC extends RackUnit implements DiskController,
 		iopbSec = mem.read(iopbAdr + 4);
 		iopbDma = mem.read(iopbAdr + 5) |
 			(mem.read(iopbAdr + 6) << 8);
-
+		command = iopbCmd;
+		error = false;
 		if (iopbOp != 0x80) {
 			// what sort of error
-			fdcStat |= STS_DONE;
+			cmdError(RBYTE_SE);
+			return;
+		}
+		int u = ((iopbCmd & MSK_UNIT) >> SHF_UNIT);
+		if (u == 3) u = 1;
+		selectDrive(u);
+		if (curr == null || !curr.isReady()) {
+			selectErr = true;
+			cmdError(RBYTE_NRDY);
 			return;
 		}
 
-		if (iopbCmd == CMD_RESTORE) {
-			fdcStat |= STS_DONE;
-			return;
-		}
-
-		int n;
 		int c = (iopbCmd & MSK_CMD);
-		int u = (iopbCmd & MSK_UNIT) >> SHF_UNIT;
-		error = false;
-//		status &= ~bit(CRU_INTR);
-//		status |= bit(CRU_CTRL_BSY);
+		if (c == CMD_RESTORE) {
+			// TODO: set unit track to 0?
+			cmdComplete();
+			return;
+		}
+		multi = iopbSC;
+		head = 0; // always SS for now
+		sector = iopbSec & MSK_SEC;
+		track = iopbTrk & MSK_TRK;
+		if (sector == 0 || sector > 26) {
+			cmdError(RBYTE_AE);
+			return;
+		}
+		if (track > 76) {
+			cmdError(RBYTE_SE);
+			return;
+		}
+		seekTrack(track);
 		switch (c) {
 		case CMD_READ:
-			command = iopbCmd;
-			if (selectErr) {
-				cmdError(0); // bits already set
-				break;
-			}
-//			multi = ((cmd & bit(CRU_MULTI)) == 0);
-//			head = (cmd >> CRU_HEAD) & 1;
-//			sector = (cmd & MSK_SECTOR);
-			if (sector == 0 || sector > 26) {
-//				cmdError(bit(CRU_NO_ID));
-				break;
-			}
 			if (fillBuf() < 0) {
-//				cmdError(bit(CRU_DAT_ERR));
+				cmdError(RBYTE_DE);
 				break;
 			}
-			cmdXfer();
-			active = true;
-			if (!multi) {
-//				status |= bit(CRU_OPCOMPLETE);
+			if (multi == 0) {
+				cmdComplete();
 			}
+			state = DATA;
 			break;
 		case CMD_WRITE:
-			command = iopbCmd;
-			if (selectErr || protect) {
-//				cmdError(protect ? bit(CRU_WR_PROT) : 0);
+			if (protect) {
+				cmdError(RBYTE_WP);
 				break;
 			}
-//			head = (cmd >> CRU_HEAD) & 1;
-//			sector = (cmd & MSK_SECTOR);
-			if (sector == 0 || sector > 26) {
-//				cmdError(bit(CRU_NO_ID));
-				break;
+			if (multi == 0) {
+				cmdComplete();
 			}
 			dataIdx = 0;
-			cmdXfer();
-			active = true;
+			state = DATA;
 			break;
 		default:
-System.err.format("Unknown command %02x\n", iopbCmd);
+			cmdError(RBYTE_SE);
 			break;
+		}
+		if (multi == 0) {
+			cmdComplete();
 		}
 		if (active) {
 			timer.removeActionListener(this);
@@ -509,29 +587,20 @@ System.err.format("Unknown command %02x\n", iopbCmd);
 			timer.restart();
 			// hld[unit].set(true);
 		}
-		if (!active && !error) {
-			cmdComplete();
-		}
-		chkIntr();
 	}
 
-	private int fillNext() {
-		if (curr == null) {
-			return -1;
+	private void doData() {
+		int n;
+		int c = (iopbCmd & MSK_CMD);
+		switch (c) {
+		case CMD_READ:
+			cmdXfer(false);
+			break;
+		case CMD_WRITE:
+			cmdXfer(true);
+			break;
 		}
-		// TODO: where does head come in?
-		++sector;
-		if (sector > 26) {
-			sector = 1;
-			++track;
-			if (track > 76) {
-				track = 76;
-				cmdComplete();
-				chkIntr();
-				return 0;
-			}
-		}
-		return fillBuf();
+		chkIntr();
 	}
 
 	private int fillBuf() {
@@ -543,7 +612,7 @@ System.err.format("Unknown command %02x\n", iopbCmd);
 					GenericFloppyFormat.DATA_AM) {
 			return -1;
 		}
-		for (int x = 0; x < 128; ++x) {
+		for (int x = 0; x < 128; ++x) { // SD 128B/sec for now
 			int data = curr.readData(0, track, head, sector, x);
 			if (data < 0) {
 				return -1;
@@ -584,87 +653,11 @@ System.err.format("Unknown command %02x\n", iopbCmd);
 		return 0;
 	}
 
-	private int getData() {
-		if (unit < 0 || dataIdx >= sectorLen[unit]) {
-			return 0;
-		}
-		int x = dataIdx;
-		int data = (curBuf[x++] & 0xff) << 8;
-		data |= (curBuf[x++] & 0xff);
-		return data;
-	}
-
-	private void ackData() {
-		if (unit < 0 || dataIdx >= sectorLen[unit]) {
-			return;
-		}
-		dataIdx += 2;
-		if (dataIdx >= sectorLen[unit]) {
-			if (!multi) {
-				cmdComplete();
-				chkIntr();
-			} else if (fillNext() < 0) {
-//				cmdError(bit(CRU_DAT_ERR));
-			}
-		}
-	}
-
-	private void putData(int val) {
-		if (unit < 0 || dataIdx >= sectorLen[unit]) {
-			return;
-		}
-		dirty = true;
-		curBuf[dataIdx++] = (byte)(val >> 8);
-		curBuf[dataIdx++] = (byte)val;
-		if (dataIdx >= sectorLen[unit]) {
-			if (flushBuf() < 0) {
-//				cmdError(bit(CRU_DAT_ERR));
-			} else {
-				cmdComplete();
-				chkIntr();
-			}
-		}
-	}
-
-	///////////////////////////////
-	/// Interfaces for CRUDevice ///
-
-	// Returns value with LSB == 'off' bit of data
-	// TODO: how to enforce 16-bit I/O restrictions for FD800
-	public int readCRU(int adr, int cnt) {
-		int off = adr - basePort;
-		int val;
-		if (off < 0x010) {
-			val =  getData();
-		} else {
-			// Status word is maintained on the fly, only return it here...
-			val = status;
-		}
-		val >>= (off & 0x0f);
-		val &= ((1 << cnt) - 1);
-		return val;
-	}
-
-	// Value has LSB == 'off' bit of data
-	public void writeCRU(int adr, int cnt, int val) {
-		int off = adr - basePort;
-		val <<= (off & 0x0f);
-		if (off < 0x010) {
-			if (cnt == 1 && off == 0x0f) {
-				ackData();
-			} else {
-				putData(val);
-			}
-		} else {
-//			doCommand(val);
-		}
-	}
-
 	public void reset() {
 		// if commands are asynch, must abort any here...
+		cmdWait.drainPermits();
 		abort();
 		selectDrive(pwrOn ? 0 : -1);
-		status = 0;
 		command = 0;
 		dirty = false;
 		Arrays.fill(sectorLen, 128);
@@ -673,16 +666,16 @@ System.err.format("Unknown command %02x\n", iopbCmd);
 		intr.lowerINT(irq, src);
 	}
 
-	public int getBaseAddress() { return 0x78; }
+	public int getBaseAddress() { return basePort; }
 
-	public int getNumPorts() { return 4; }
+	public int getNumPorts() { return 8; }
 
 	public int in(int port) {
 		int off = port - getBaseAddress();
 		int val = 0;
 		switch (off) {
 		case 0:
-			val |= 0x04; // I/O done (also need disk ready bit(s))
+			val = fdcStat;
 			break;
 		case 1:	// result type
 			// ------xx meaning:
@@ -692,15 +685,7 @@ System.err.format("Unknown command %02x\n", iopbCmd);
 			break;
 		case 2:
 			break;
-		case 3:	// result byte - Error bits:
-			// 0 - deleted data (accepted as ok above)
-			// 1 - crc error
-			// 2 - seek error
-			// 3 - address error (hardware malfunction)
-			// 4 - data over/under flow (hardware malfunction)
-			// 5 - write protect (treated as not ready)
-			// 6 - write error (hardware malfunction)
-			// 7 - not ready
+		case 3:	// result byte
 			val = resByte;
 			break;
 		}
@@ -721,6 +706,9 @@ System.err.format("Unknown command %02x\n", iopbCmd);
 			break;
 		case 3:
 			break;
+		case 7:
+			// TODO: reset controller
+			break;
 		}
 	}
 
@@ -728,11 +716,13 @@ System.err.format("Unknown command %02x\n", iopbCmd);
 
 	public String dumpDebug() {
 		String ret = new String();
-		ret += String.format("CRU base %03x, status = %04x, command = %04x\n",
-			basePort, status, command);
+		ret += String.format("FDC base %02x, sts = %02x, res1 = %02x, res2 = %02x\n",
+			basePort, fdcStat, resType, resByte);
 		ret += String.format("track %d, head = %d, sector %d, unit %d\n",
 			track, head, sector, unit);
 		ret += String.format("dataIdx %d IntrEnable=%s\n", dataIdx, intrEnable);
+		ret += String.format("last cmd %04x: %02x %02x %02x %02x %02x %04x\n",
+			iopbAdr, iopbOp, iopbCmd, iopbSC, iopbTrk, iopbSec, iopbDma);
 		return ret;
 	}
 
@@ -747,5 +737,30 @@ System.err.format("Unknown command %02x\n", iopbCmd);
 
 	public Vector<GenericRemovableDrive> getDiskDrives() {
 		return new Vector<GenericRemovableDrive>();
+	}
+
+	public void run() {
+		while (true) {
+			if (!pwrOn) {
+				try { Thread.sleep(100); } catch (Exception e) {}
+				continue;
+			}
+			try {
+				cmdWait.acquire();
+			} catch (Exception e) {
+				e.printStackTrace();
+				break;
+			}
+			while (pwrOn && state != DONE) {
+				switch (state) {
+				case IOPB:
+					getIopb();
+					break;
+				case DATA:
+					doData();
+					break;
+				}
+			}
+		}
 	}
 }
