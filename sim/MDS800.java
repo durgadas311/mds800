@@ -20,7 +20,7 @@ public class MDS800 implements MDS800Commander, Computer, Runnable {
 	private Vector<IODevice> devs;
 	private Vector<DiskController> dsks;
 	private Vector<InterruptController> intrs;
-	private Memory mem;
+	private MDSMemory mem;
 	private boolean running;
 	private boolean stopped;
 	private Semaphore stopWait;
@@ -81,6 +81,13 @@ public class MDS800 implements MDS800Commander, Computer, Runnable {
 		addDevice(sp);
 		sp = new INS8251(props, "crt", 0xf6, 3, fp);
 		addDevice(sp);
+
+		s = props.getProperty("mds800_fdc");
+		if (s != null) {
+			MDS_FDC fdc = new MDS_FDC(props, "FDC", 0x78, 6, 0, mem, fp);
+			addDiskDevice(fdc);
+			fp.addPanel(fdc);
+		}
 
 		s = props.getProperty("mds800_trace");
 		trc = new I8080Tracer(props, "mds800", cpu, mem, s);
@@ -228,6 +235,17 @@ public class MDS800 implements MDS800Commander, Computer, Runnable {
 	public void startTracing(int cy) {
 	}
 	public void stopTracing() {
+	}
+	public void setPower(boolean on) {
+		if (!on) {
+			stop();
+		}
+		for (DiskController dev : dsks) {
+			dev.setPower(on);
+		}
+		if (on) {
+			start();
+		}
 	}
 
 	/////////////////////////////////////////////

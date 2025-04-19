@@ -3,6 +3,7 @@
 import java.util.Vector;
 
 public interface DiskController extends IODevice {
+	void setPower(boolean on);
 	GenericRemovableDrive findDrive(String name);
 	Vector<GenericRemovableDrive> getDiskDrives();
 }

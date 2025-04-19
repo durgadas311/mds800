@@ -354,7 +354,7 @@ public class MDS800Operator implements ActionListener, ResetListener, Runnable
 		SuffFileChooser ch = new SuffFileChooser("Core Dump",
 			new String[]{ "vMDS" },
 			new String[]{ "VMDS Core Dump" },
-			null, null, _last_core, true);
+			_last_core, null);
 		int rv = ch.showDialog(_main);
 		_main.requestFocus();
 		if (rv != JFileChooser.APPROVE_OPTION) {
@@ -613,37 +613,7 @@ public class MDS800Operator implements ActionListener, ResetListener, Runnable
 				} else {
 					dir = new File(".");
 				}
-				SuffFileChooser ch = new SuffFileChooser(
-					"Mount on " + drv,
-					sx, sd, null, null, dir, true);
-				if (media.length() > 0) {
-					ch.setSelectedFile(new File(media));
-				}
-				int rv = ch.showDialog(_main);
-				_main.requestFocus();
-				if (rv == JFileChooser.APPROVE_OPTION) {
-					media = ch.getSelectedFile().getAbsolutePath();
-					Vector<String> resp = _cmdr.sendCommand("mount " +
-						drv + ' ' + media + ' ' +
-						(ch.isProtected() ? "ro" : "rw"));
-					if (!resp.get(0).equals("ok")) {
-						error(_main, "Mount", join(resp));
-					} else {
-						_mdia.put(key, media);
-						setMenuText(mu, drv, ch.getSelectedFile().getName());
-					}
-				} else if (rv == JFileChooser.CANCEL_OPTION) {
-					if (ch.isUnmount()) {
-						Vector<String> resp = _cmdr.sendCommand(
-							"unmount " + drv);
-						if (!resp.get(0).equals("ok")) {
-							error(_main, "Unmount", join(resp));
-						} else {
-							_mdia.put(key, "");
-							setMenuText(mu, drv, "");
-						}
-					}
-				}
+System.err.format("plug in Operator to FDC rack\n");
 				continue;
 			}
 			if (key == _about_key) {

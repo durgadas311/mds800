@@ -47,11 +47,13 @@ public class MDSFrontPanel implements IODevice, InterruptController, Interruptor
 	int intMask;
 	private int[] intRegistry;
 	private int[] intLines;
+	JFrame main;
 
 	public MDSFrontPanel(JFrame frame, Properties props) {
 		JPanel panel;
 		JPanel panel2;
 		JLabel lab;
+		main = frame;
 		intRegistry = new int[8];
 		intLines = new int[8];
 		Arrays.fill(intRegistry, 1); // src 0 is FP
@@ -247,6 +249,13 @@ public class MDSFrontPanel implements IODevice, InterruptController, Interruptor
 		panel.add(lab);
 	}
 
+	public void addPanel(JPanel panel) {
+		gc.gridx = 0;
+		gc.gridy = 2;
+		gb.setConstraints(panel, gc);
+		main.add(panel);
+	}
+
 	public void setSys(MDS800 mds) {
 		sys = mds;
 		sys.addIntrController(this);
@@ -346,6 +355,7 @@ public class MDSFrontPanel implements IODevice, InterruptController, Interruptor
 			// 0x20: "restore operating level"
 			break;
 		case 2:
+			// CMDE - temp disable for all ports?
 			break;
 		case 3:
 			break;
@@ -380,11 +390,7 @@ public class MDSFrontPanel implements IODevice, InterruptController, Interruptor
 
 	public void setPower(boolean on) {
 		pwr.set(on);
-		if (on) {
-			sys.start();
-		} else {
-			sys.stop();
-		}
+		sys.setPower(on);
 	}
 
 	public void setHalt(boolean on) {
