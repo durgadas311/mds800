@@ -31,7 +31,8 @@ public class MDS_FDC extends RackUnit implements DiskController,
 	private static final int MSK_CMD	= 0x07;
 	private static final int MSK_UNIT	= 0x30;
 	private static final int SHF_UNIT	= 4;
-	private static final int MSK_SEC	= 0x1f; // why?
+	private static final int MSK_SEC	= 0x1f; // oddity in ctrlr:
+	private static final int MSK_SEC_DBK	= 0x20; // "disk bank"
 	private static final int MSK_TRK	= 0x7f; // needed?
 
 	private static final int CMD_NONE	= 0;
@@ -428,14 +429,13 @@ public class MDS_FDC extends RackUnit implements DiskController,
 	}
 
 	private int nextSector() {
-		--multi;
 		++sector;
 		if (sector > 26) {
 			sector = 1;
 			++track;
 			if (track > 76) {
 				cmdError(RBYTE_SE);
-				return - 1;
+				return -1;
 			}
 		}
 		return 0;
@@ -449,7 +449,7 @@ public class MDS_FDC extends RackUnit implements DiskController,
 					cmdError(RBYTE_WE);
 					return;
 				}
-				if (multi == 0) {
+				if (--multi == 0) {
 					cmdComplete();
 					return;
 				}
@@ -462,7 +462,7 @@ public class MDS_FDC extends RackUnit implements DiskController,
 			mem.write(iopbDma++, curBuf[dataIdx++]);
 			dirty = true;
 			if (dataIdx >= 128) {
-				if (multi == 0) {
+				if (--multi == 0) {
 					cmdComplete();
 					return;
 				}
@@ -542,6 +542,7 @@ public class MDS_FDC extends RackUnit implements DiskController,
 		multi = iopbSC;
 		head = 0; // always SS for now
 		sector = iopbSec & MSK_SEC;
+		// TODO: might need "disk bank" (iopbSec & MSK_SEC_DBK)
 		track = iopbTrk & MSK_TRK;
 		if (sector == 0 || sector > 26) {
 			cmdError(RBYTE_AE);
@@ -558,18 +559,12 @@ public class MDS_FDC extends RackUnit implements DiskController,
 				cmdError(RBYTE_DE);
 				break;
 			}
-			if (multi == 0) {
-				cmdComplete();
-			}
 			state = DATA;
 			break;
 		case CMD_WRITE:
 			if (protect) {
 				cmdError(RBYTE_WP);
 				break;
-			}
-			if (multi == 0) {
-				cmdComplete();
 			}
 			dataIdx = 0;
 			state = DATA;
