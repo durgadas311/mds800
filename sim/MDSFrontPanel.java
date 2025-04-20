@@ -125,46 +125,48 @@ public class MDSFrontPanel implements IODevice, InterruptController, Interruptor
 		gc.anchor = GridBagConstraints.CENTER;
 
 		// start upper panel
-		panel = new JPanel();
-		panel.setBorder(BorderFactory.createBevelBorder(BevelBorder.LOWERED,
-			Color.white, Color.gray));
+		panel = new RackUnit(3);
 		gb = new GridBagLayout();
 		panel.setLayout(gb);
-		panel.setOpaque(true);
-		panel.setBackground(Color.black);
 
 		JPanel pan;
-		gc.gridwidth = 9;
-		setGap(panel, 1000, 10);
+		gc.gridwidth = 10;
+		setGap(panel, RackUnit.WIDTH - 4, 10);
 		gc.gridwidth = 1;
-		gc.gridx = 1;
 		gc.gridy = 1;
+		gc.gridx = 2;
+		setLabel(panel, "ON", 20);
+		++gc.gridy;
+		gc.gridx = 1;
 		gc.gridheight = 2;
+		setLabel(panel, "OFF", 20);
+		++gc.gridx;
 		gb.setConstraints(key, gc);
 		panel.add(key);
 		gc.gridheight = 1;
 		++gc.gridx;
 		setGap(panel, 10, 10);
 		++gc.gridx;
-		setLabel(panel, "PWR");
+		int left = gc.gridx;
+		setLabel(panel, "PWR", 20);
 		++gc.gridx;
 		setGap(panel, 10, 10);
 		++gc.gridx;
-		setLabel(panel, "HALT");
+		setLabel(panel, "HALT", 20);
 		++gc.gridx;
 		setGap(panel, 10, 10);
 		++gc.gridx;
-		setLabel(panel, "RUN");
+		setLabel(panel, "RUN", 20);
 		++gc.gridx;
 		setGap(panel, 100, 10);
 		++gc.gridy;
-		gc.gridx = 3;
+		gc.gridx = left;
 		gb.setConstraints(pwr, gc);
 		panel.add(pwr);
-		gc.gridx = 5;
+		gc.gridx += 2;
 		gb.setConstraints(hlt, gc);
 		panel.add(hlt);
-		gc.gridx = 7;
+		gc.gridx += 2;
 		gb.setConstraints(run, gc);
 		panel.add(run);
 		++gc.gridy;
@@ -173,51 +175,65 @@ public class MDSFrontPanel implements IODevice, InterruptController, Interruptor
 		// end of upper panel
 
 		// begin lower panel
-		panel2 = new JPanel();
-		panel2.setBorder(BorderFactory.createBevelBorder(BevelBorder.LOWERED,
-			Color.white, Color.gray));
+		panel2 = new RackUnit(4);
 		gb = new GridBagLayout();
 		panel2.setLayout(gb);
-		panel2.setOpaque(true);
-		panel2.setBackground(Color.black);
 		gc.gridx = 0;
 		gc.gridy = 0;
 		gc.gridwidth = 21;
-		setGap(panel2, 1000, 10);
+		setGap(panel2, RackUnit.WIDTH - 4, 10);
 		gc.gridwidth = 1;
 		gc.gridx = 1;
 		gc.gridy = 1;
+		char[] l = new char[38];
+		Arrays.fill(l, '\u2500');
+		String line = new String(l);
+		gc.gridwidth = 15;
+		setLabel(panel2,
+			"\u250c" + line +
+			" INTERRUPTS " +
+			line + "\u2510",
+			230);
+		gc.gridwidth = 1;
+		++gc.gridy;
+		int top = gc.gridy;
 		for (int x = 7; x >= 0; --x) {
 			gb.setConstraints(irq[x], gc);
 			panel2.add(irq[x]);
 			++gc.gridy;
-			setLabel(panel2, String.format("%d", x));
+			setLabel(panel2, String.format("%d", x), 20);
 			++gc.gridy;
 			gb.setConstraints(btns[x], gc);
 			panel2.add(btns[x]);
 			++gc.gridx;
 			if (x > 0) {
-				setGap(panel2, 10, 10);
+				setGap(panel2, 5, 10);
+				++gc.gridx;
 			}
-			gc.gridy = 1;
+			gc.gridy = top;
 		}
 		setGap(panel2, 50, 10);
 		++gc.gridx;
 		++gc.gridy;
-		setLabel(panel2, "BOOT");
+		top = gc.gridy;
+		setLabel(panel2, "BOOT", 20);
 		++gc.gridy;
 		gb.setConstraints(btns[BOOT], gc);
 		panel2.add(btns[BOOT]);
 		++gc.gridx;
 		setGap(panel2, 100, 10);
 		++gc.gridx;
-		gc.gridy = 2;
-		setLabel(panel2, "RESET");
+		gc.gridy = top;
+		setLabel(panel2, "RESET", 20);
 		++gc.gridy;
 		gb.setConstraints(btns[RESET], gc);
 		panel2.add(btns[RESET]);
 		++gc.gridx;
 		setGap(panel2, 100, 10);
+		++gc.gridy;
+		gc.gridx = 0;
+		gc.gridwidth = 21;
+		setGap(panel2, RackUnit.WIDTH - 4, 20);
 		// end of lower panel
 
 		gb = new GridBagLayout();
@@ -232,15 +248,15 @@ public class MDSFrontPanel implements IODevice, InterruptController, Interruptor
 		frame.add(panel2);
 	}
 
-	private void setGap(JPanel panel, int x, int y) {
+	private void setGap(JPanel panel, int w, int h) {
 		JPanel pan = new JPanel();
-		pan.setPreferredSize(new Dimension(x, y));
+		pan.setPreferredSize(new Dimension(w, h));
 		pan.setOpaque(false);
 		gb.setConstraints(pan, gc);
 		panel.add(pan);
 	}
 
-	private void setLabel(JPanel panel, String l) {
+	private void setLabel(JPanel panel, String l, int w) {
 		JLabel lab = new JLabel(l);
 		lab.setFont(lesstiny);
 		lab.setOpaque(false);

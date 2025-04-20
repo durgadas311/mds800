@@ -125,7 +125,7 @@ public class MDS_FDC extends RackUnit implements DiskController,
 			}
 			setOpaque(true);
 			setBackground(norm);
-			setPreferredSize(new Dimension(220, 80));
+			setPreferredSize(new Dimension(350, 80));
 			setBorder(BorderFactory.createBevelBorder(BevelBorder.RAISED,
 				normHi, normHi, normLo, normLo));
 			GridBagLayout gb = new GridBagLayout();
@@ -235,7 +235,7 @@ public class MDS_FDC extends RackUnit implements DiskController,
 		GridBagLayout gb = new GridBagLayout();
 		pnl.setLayout(gb);
 		GridBagConstraints gc = new GridBagConstraints();
-		pnl.setOpaque(false);
+		//pnl.setOpaque(false);
 		gc.fill = GridBagConstraints.NONE;
 		gc.gridx = 0;
 		gc.gridy = 0;
@@ -251,7 +251,7 @@ public class MDS_FDC extends RackUnit implements DiskController,
 		++gc.gridx;
 		JPanel pan = new JPanel();
 		pan.setOpaque(false);
-		pan.setPreferredSize(new Dimension(30, 20));
+		pan.setPreferredSize(new Dimension(60, 20));
 		gb.setConstraints(pan, gc);
 		pnl.add(pan);
 		++gc.gridx;
@@ -288,6 +288,7 @@ public class MDS_FDC extends RackUnit implements DiskController,
 						MDSMemory mem, Interruptor intr) {
 		// TODO: handle LUN...
 		super(4);	// 4U height
+		setBackground(RackUnit.BLUE);
 		cmdWait = new Semaphore(0);
 		tiny = new Font("Sans-serif", Font.PLAIN, 8);
 		FDCctrl(props, label, base, irq, mem, intr);

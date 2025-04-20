@@ -5,9 +5,10 @@ import javax.swing.*;
 import javax.swing.border.*;
 
 public class RackUnit extends JPanel {
-	static final int WIDTH = 550;
+	static final int WIDTH = 1024;
 	static final int HEIGHT = 45;	// 1U height...
 	static final Color BG = new Color(50, 50, 50);
+	static final Color BLUE = new Color(60, 160, 255);
 	static final Color FRAME  = new Color(238, 238, 238);
 	static final Color HILITE = new Color(250, 250, 250);
 	static final Color SHADOW = new Color(200, 200, 200);
