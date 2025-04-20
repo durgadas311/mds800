@@ -63,11 +63,11 @@ ptpsys	equ	00001000b	; PTP system ready
 ptpchd	equ	00010000b	; PTP chad error
 ptplow	equ	00100000b	; PTP tape low
 ; ptctl:
-ttyadv	equ	00000010b	; TTY adv rdr?
+ttyadv	equ	00000010b	; TTY strobe reader one char
 ptrdir	equ	00000100b	; PTR direction?
-ptrdrv	equ	00001000b	; PTR drive?
+ptrdrv	equ	00001000b	; PTR strobe reader one char
 ptpfor	equ	00010000b	; PTP forward? (direction?)
-ptpadv	equ	00100000b	; PTP advance?
+ptpadv	equ	00100000b	; PTP punch one char
 ; lptsts:
 lptbsy	equ	00000001b	; LPT busy (data)
 lptstt	equ	00000010b	; LPT stat? error/ready?
@@ -991,7 +991,7 @@ rdrin:	push	h		;; fcb8: e5          .
 	ani	00ch		;; fcbd: e6 0c       ..
 	jnz	Lfcdf		;; fcbf: c2 df fc    ...
 ; TTY PTR
-	mvi	a,002h		;; fcc2: 3e 02       >.
+	mvi	a,ttyadv	;; fcc2: 3e 02       >.
 	out	ptctl		;; fcc4: d3 f9       ..
 	mvi	h,250	; approx 1/4 sec
 Lfcc8:	in	ttysts		;; fcc8: db f5       ..
@@ -1013,11 +1013,11 @@ Lfcda:	in	ttydat		;; fcda: db f4       ..
 Lfcdf:	cpi	004h		;; fcdf: fe 04       ..
 	jnz	Lfd00		;; fce1: c2 00 fd    ...
 ; high speed reader - PTR:
-	mvi	a,008h		;; fce4: 3e 08       >.
+	mvi	a,ptrdrv	;; fce4: 3e 08       >.
 	out	ptctl		;; fce6: d3 f9       ..
 	mvi	h,250	; approx 1/4 sec
 Lfcea:	in	ptsts		;; fcea: db f9       ..
-	ani	001h		;; fcec: e6 01       ..
+	ani	ptrrdy		;; fcec: e6 01       ..
 	jnz	Lfcfb		;; fcee: c2 fb fc    ...
 	call	wt1ms	; wait for 1ms tick
 	dcr	h		;; fcf4: 25          %
@@ -1086,11 +1086,11 @@ punout:	lda	iobyte		;; fd52: 3a 03 00    :..
 	cpi	010h		;; fd5a: fe 10       ..
 	jnz	Lfd6e		;; fd5c: c2 6e fd    .n.
 Lfd5f:	in	ptsts		;; fd5f: db f9       ..
-	ani	004h		;; fd61: e6 04       ..
+	ani	ptprdy		;; fd61: e6 04       ..
 	jz	Lfd5f		;; fd63: ca 5f fd    ._.
 	mov	a,c		;; fd66: 79          y
 	out	ptdat		;; fd67: d3 f8       ..
-	mvi	a,020h		;; fd69: 3e 20       >
+	mvi	a,ptpadv	;; fd69: 3e 20       >
 	out	ptctl		;; fd6b: d3 f9       ..
 	ret			;; fd6d: c9          .
 
