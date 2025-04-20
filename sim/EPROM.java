@@ -56,6 +56,10 @@ public class EPROM implements Rom {
 	public void write(int addr, int val) {}
 	public void writeEnable(boolean we) {}
 
+	public void set(int addr, int val) {
+		rom[(addr ^ xor) & msk] = (byte)val;
+	}
+
 	public String dumpDebug() {
 		return String.format("%d ROM at %04x ^ %04x\n", rom.length, org, xor);
 	}

@@ -30,15 +30,26 @@ public class MDSRoms {
 		if (s == null) {
 			s = "1702_MDS.rom";
 		}
+		EPROM br = null;
 		try {
-			boot = new EPROM(s, 0x0000);
+			br = new EPROM(s, 0x0000);
 		} catch (Exception ee) {
 			ee.printStackTrace();
 			System.exit(1);
 		}
+		boot = br;
 		int n = boot.length();
 		if (n != 0x0100) {
 			System.err.format("Boot ROM wrong size: %d\n", n);
+			return;
+		}
+		s = props.getProperty("mds800_iobyte"); // change defaults in PROM
+		if (s != null && s.matches("^[0-3][0-3][0-3]0$")) {
+			// [LST][PUN][RDR][CON]
+			int iobyte = (Integer.valueOf(s.substring(0, 1)) << 6) |
+				(Integer.valueOf(s.substring(1, 2)) << 4) |
+				(Integer.valueOf(s.substring(2, 3)) << 2);
+			br.set(0x0003, iobyte);
 		}
 	}
 }
