@@ -81,7 +81,8 @@ crtoi	equ	00010000b
 crtii	equ	00100000b
 lptoi	equ	01000000b
 
-imask	equ	0fch	; 3/C8	[interrupt masks]
+imask	equ	0fch	; i8259 intr masks
+rstint	equ	0fdh	; i8259 control/command
 
 im0	equ	00000001b
 im1	equ	00000010b
@@ -93,8 +94,6 @@ im6	equ	01000000b
 im7	equ	10000000b
 im1$7	equ	im1+im2+im3+im4+im5+im6+im7
 
-rstint	equ	0fdh	; 3/C8	["restore operating level"]
-ioFE	equ	0feh	; 2/C8	[not used?]
 fpsw	equ	0ffh	; read - front panel switches and state
 fp1ms	equ	0001b	; 1mS clock?
 bsw	equ	0010b	; BOOT switch
@@ -147,15 +146,15 @@ bsw	equ	0010b	; BOOT switch
 ; overlays iobyte for reads
 L0003:	db	00000000b	; default iobyte
 
-	db	9,15h		; dw 1509h? version or checksum?
+	db	9,21		; datestamp
 
 L0006:	di			;; 0006: f3          .
-	mvi	a,012h		;; 0007: 3e 12       >.
+	mvi	a,012h	; ICW1: init i8259, SINGLE, vectors in xx00H
 	out	rstint		;; 0009: d3 fd       ..
 	xra	a		;; 000b: af          .
-	xra	a		;; 000c: af          .
+	xra	a	; ICW2: vectors in 00xxH
 	out	imask		;; 000d: d3 fc       ..
-	mvi	a,im1$7
+	mvi	a,im1$7	; OCW1: intr masks
 	out	imask		;; 0011: d3 fc       ..
 	mvi	a,0		;; 0013: 3e 00       >.
 	out	intctl	; /INT3 off
@@ -1417,7 +1416,7 @@ Lff46:	inx	h		;; ff46: 23          #
 	mov	a,m		;; ff4e: 7e          ~
 	sbb	b		;; ff4f: 98          .
 	jz	Lff58		;; ff50: ca 58 ff    .X.
-Lff53:	mvi	a,020h		;; ff53: 3e 20       >
+Lff53:	mvi	a,020h	; OCW2: EOI to i8259
 	out	rstint	; "restore operating level" (intr)
 	inx	b		;; ff57: 03          .
 Lff58:	lhld	ramtop		;; ff58: 2a 04 00    *..
