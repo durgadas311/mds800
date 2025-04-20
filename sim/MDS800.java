@@ -88,6 +88,12 @@ public class MDS800 implements MDS800Commander, Computer, Runnable {
 			addDiskDevice(fdc);
 			fp.addPanel(fdc);
 		}
+		s = props.getProperty("mds800_pt");
+		if (s != null) {
+			PaperTape pt = new PaperTape(props, 0xf8, 3, fp);
+			addDevice(pt);
+			fp.addPanel(pt);
+		}
 
 		s = props.getProperty("mds800_trace");
 		trc = new I8080Tracer(props, "mds800", cpu, mem, s);

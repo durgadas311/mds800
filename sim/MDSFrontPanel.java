@@ -44,9 +44,19 @@ public class MDSFrontPanel implements IODevice, InterruptController, Interruptor
 	boolean clk1ms;
 	int src1ms;
 	int intState;
+	int intService;
 	int intMask;
+	int priMask;
 	private int[] intRegistry;
 	private int[] intLines;
+	private boolean i8259_init;
+	private int i8259_page;	// not used - always do RST x
+	private int i8259_adi;		// assumed to be 8
+	private int i8259_cmd;		// assumed to always be 0b001
+	private int i8259_lev;		// N/A for cmd 0b001
+	private int i8259_cur;		// currently serviced intr
+	private int i8259_rsel;		// register select for input
+	private boolean i8259_smm;	// not supported
 	JFrame main;
 
 	public MDSFrontPanel(JFrame frame, Properties props) {
@@ -246,6 +256,9 @@ public class MDSFrontPanel implements IODevice, InterruptController, Interruptor
 		++gc.gridy;
 		gb.setConstraints(panel2, gc);
 		frame.add(panel2);
+		// reset for addPanel()...
+		gc.gridx = 0;
+		gc.gridy = 2;
 	}
 
 	private void setGap(JPanel panel, int w, int h) {
@@ -266,10 +279,9 @@ public class MDSFrontPanel implements IODevice, InterruptController, Interruptor
 	}
 
 	public void addPanel(JPanel panel) {
-		gc.gridx = 0;
-		gc.gridy = 2;
 		gb.setConstraints(panel, gc);
 		main.add(panel);
+		++gc.gridy;
 	}
 
 	public void setSys(MDS800 mds) {
@@ -285,15 +297,20 @@ public class MDSFrontPanel implements IODevice, InterruptController, Interruptor
 	private void setInt(int irq) {
 		intState |= (1 << irq);
 		this.irq[irq].set(true);
-		if ((intState & ~intMask) != 0) {
+		// TODO: i8259: check priority and only raise if higher?
+		if ((intState & ~intMask & priMask) != 0) {
 			sys.raiseINT();
 		}
 	}
 
-	private void clearInt(int irq) {
+	private void __clearInt(int irq) {
 		intState &= ~(1 << irq);
 		this.irq[irq].set(false);
-		if ((intState & ~intMask) == 0) {
+	}
+
+	private void clearInt(int irq) {
+		__clearInt(irq);
+		if ((intState & ~intMask & priMask) == 0) {
 			sys.lowerINT();
 		}
 	}
@@ -301,31 +318,64 @@ public class MDSFrontPanel implements IODevice, InterruptController, Interruptor
 	// sets a new mask, some bits might unmask...
 	private void maskInts(int msk) {
 		intMask = msk;
-		if ((intState & ~intMask) == 0) {
+		if ((intState & ~intMask & priMask) == 0) {
 			sys.lowerINT();
 		} else {
 			sys.raiseINT();
 		}
 	}
 
+	private int intrAck() {
+		int irq = Integer.numberOfTrailingZeros(intState & ~intMask & priMask);
+		if (irq > 7) {
+			return -1;
+		}
+		i8259_cur = irq;
+		priMask = (1 << irq) - 1;
+		intService |= (1 << irq);
+		__clearInt(irq);
+		__lowerINT(irq, 0); // in case it came from us (switches)
+		sys.lowerINT();
+		return irq;
+	}
+
 	////////////////////////////////////
 	// InterruptController interface
 	public int readDataBus() {
 		// this also serves as INTA
-		int irq = Integer.numberOfTrailingZeros(intState & ~intMask);
-		if (irq > 7) {
+		// TODO: what does i8259 do here?
+		int irq = intrAck();
+		if (irq < 0) {
 			return -1;
 		}
-		lowerINT(irq, 0); // in case it came from us
+		// TODO: support generic CALL to i8259_page
+		// adr = i8259_page + (irq * i8259_adi);
+		// 0: return 0xcd
+		// 1: return adr & 0xff
+		// 2: return adr >> 8
 		return (0xc7 | (irq << 3));
+	}
+
+	private void reset_i8259() {
+		intState = 0;
+		intService = 0;
+		intMask = 0;
+		priMask = 0xff;
+		setIntrs(0);
+		i8259_init = false;
+		i8259_page = 0;
+		i8259_cmd = 0;
+		i8259_adi = 0;
+		i8259_lev = 0;
+		i8259_cur = 0; // TODO: need an invalid value?
+		i8259_rsel = 0;
 	}
 
 	////////////////////////////////////
 	// IODevice interface
+	// i8259 + sys ctl
 	public void reset() {
-		intState = 0;
-		intMask = 0;
-		setIntrs(0);
+		reset_i8259();
 		run.set(false);
 		hlt.set(false);
 		clk1ms = false;
@@ -347,8 +397,23 @@ public class MDSFrontPanel implements IODevice, InterruptController, Interruptor
 			val = intMask;
 			break;
 		case 1:
+			if ((i8259_rsel & 0x04) != 0) { // POLL
+				val = intrAck();
+				if (val < 0) {
+					val = 0;
+				} else {
+					val |= 0x80; // yes?
+				}
+			} else if ((i8259_rsel & 0x02) != 0) { // RR
+				if ((i8259_rsel & 0x01) != 0) { // RIS
+					val = intService;
+				} else {
+					val = intState;
+				}
+			}
 			break;
 		case 2:
+			// not present?
 			break;
 		case 3:
 			val = (clk1ms ? 1 : 0) |
@@ -363,17 +428,50 @@ public class MDSFrontPanel implements IODevice, InterruptController, Interruptor
 		int off = port & 0x03;
 		switch (off) {
 		case 0:
-			maskInts(value);
+			if (i8259_init) { // ICW2
+				i8259_init = false;
+				i8259_page |= (value << 8);
+			} else {	// OCW1
+				maskInts(value);
+			}
 			break;
 		case 1:
 			// TODO: restore intr state ("pop")
 			// 0x12: init?
 			// 0x20: "restore operating level"
+			if ((value & 0x10) == 0x10) { // ICW1
+				reset_i8259();
+				i8259_init = true;
+				// TODO: validate other bits, reject/report unsupp?
+				// assume SINGLE
+				// assume EDGE TRIGGERED
+				// not used (yet):
+				i8259_page = (value & 0x70);
+				i8259_adi = (value & 0x04);
+				if (i8259_adi == 0) i8259_adi = 8;
+			} else if ((value & 0x08) == 0x00) { // OCW2
+				i8259_cmd = (value & 0xe0) >> 5;
+				i8259_lev = (value & 0x07);
+				if (i8259_cmd == 1) { // EOI
+					intService &= ~(1 << i8259_cur);
+					priMask = 0xff;
+					if ((intState & ~intMask & priMask) != 0) {
+						sys.raiseINT();
+					}
+				}
+			} else {	// OCW3
+				i8259_rsel = value & 0x07;
+				if ((value & 0x20) != 0) { // RESET/SET spcl mask
+					// TODO: not supported
+					i8259_smm = ((value & 0x10) != 0);
+				}
+			}
 			break;
 		case 2:
-			// CMDE - temp disable for all ports?
+			// not present?
 			break;
 		case 3:
+			// no function? some sort of reset?
 			break;
 		}
 	}
@@ -384,7 +482,13 @@ public class MDSFrontPanel implements IODevice, InterruptController, Interruptor
 
 	public String dumpDebug() {
 		String ret = String.format("MDS Front Panel port %02x\n", getBaseAddress());
-		ret += String.format("INT st=%02x mk=%02x\n", intState, intMask);
+		ret += String.format("INT state=%02x mask=%02x svc=%02x\n",
+				intState, intMask, intService);
+		ret += String.format("i8259 init=%s page=%04x adi=%d cmd=%x/%x\n",
+				i8259_init, i8259_page, i8259_adi,
+				i8259_cmd, i8259_lev);
+		ret += String.format("      cur=%d rr=%x smm=%%s\n",
+				i8259_cur, i8259_rsel, i8259_smm);
 		ret += String.format("BOOT=%s  1mS=%s\n", bootOn(), clk1ms);
 		return ret;
 	}
@@ -447,9 +551,13 @@ public class MDSFrontPanel implements IODevice, InterruptController, Interruptor
 		setInt(irq);
 	}
 
-	public void lowerINT(int irq, int src) {
+	private void __lowerINT(int irq, int src) {
 		irq &= 7;
 		intLines[irq] &= ~(1 << src);
+	}
+
+	public void lowerINT(int irq, int src) {
+		__lowerINT(irq, src);
 		if (intLines[irq] == 0) {
 			clearInt(irq);
 		}
