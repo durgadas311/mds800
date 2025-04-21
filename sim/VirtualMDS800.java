@@ -21,6 +21,12 @@ public class VirtualMDS800 {
 		if (rc == null) {
 			rc = System.getProperty("user.home") + "/.mds800rc";
 		}
+		for (String arg : args) {
+			File f = new File(arg);
+			if (f.exists()) {
+				rc = f.getAbsolutePath();
+			}
+		}
 		Properties props = new Properties();
 		try {
 			FileInputStream cfg = new FileInputStream(rc);

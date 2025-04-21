@@ -13,19 +13,15 @@ public class MDSMemory extends MDSRoms implements Memory {
 	public MDSMemory(Properties props, MDSFrontPanel fp) {
 		super(props);
 		this.fp = fp;
+		int z = 16;	// default 16K
 		String s = props.getProperty("mds800_ram");
-		if (s == null) {
-			s = "16";
+		if (s != null) {
+			z = Integer.valueOf(s);
+			z &= ~3;	// force multiple of 4K
+			if (z < 4) z = 4;
+			if (z > 64) z = 64;
 		}
-		if (s.equals("64")) {
-			mem = new byte[64*1024];
-		} else if (s.equals("48")) {
-			mem = new byte[48*1024];
-		} else if (s.equals("32")) {
-			mem = new byte[32*1024];
-		} else {	// default to 16K
-			mem = new byte[16*1024];
-		}
+		mem = new byte[z * 1024];
 	}
 
 	public int read(boolean rom, int bank, int address) {
