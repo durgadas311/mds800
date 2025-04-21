@@ -1,0 +1,8 @@
+# Minimal system to run DRI 20K CP/M 2.2 distro
+
+mds800_ram = 20
+crt_att = TelnetSerial 192.168.1.17 31123
+tty_att = TelnetSerial 192.168.1.17 31124
+
+mds800_fdc = yes
+fdc_disk1 = cpm22dri.logdisk rw

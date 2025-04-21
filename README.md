@@ -1,5 +1,9 @@
 # MDS-800 Simulator
 
+Bootable CP/M floppy image(s) in sim/img.
+
+Example config files in sim/cfg.
+
 An example running the MDS-800 monitor:
 ![Running monitor](sim/www/mds800-monitor.png)
 

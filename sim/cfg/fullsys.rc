@@ -1,0 +1,18 @@
+# Full-sized system
+
+mds800_ram = 64
+crt_att = TelnetSerial 192.168.1.17 31123
+tty_att = TelnetSerial 192.168.1.17 31124
+
+# Set default iobyte RDR/PUN for high-speed paper tape unit
+mds800_iobyte = 0110
+
+# Floppy controller and two drives
+mds800_fdc = yes
+fdc_disk1 = cpm22dri.logdisk rw
+#fdc_disk2 = ...
+
+# High-speed papert tape unit
+mds800_pt = yes
+#ptr_att = rdr_data.txt
+#ptp_att = pun_data.txt
