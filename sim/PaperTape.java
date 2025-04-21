@@ -11,7 +11,11 @@ import javax.swing.border.*;
 
 public class PaperTape extends RackUnit implements IODevice,
 				ActionListener {
+	// by mutual agreement with any TTY-attached peripheral
+	private static final int RDR = 0x0f;	// ^O - new: advance reader once
+
 	private Interruptor intr;
+	INS8251 tty;
 	private int irq;
 	private int src;
 	private int basePort;
@@ -35,6 +39,7 @@ public class PaperTape extends RackUnit implements IODevice,
 	private int ptpChar;
 	private boolean ptrRdy;
 	private boolean ptpRdy;
+	private int tty_rdr_adv_char;
 
 	private ReaderDevice reader;
 	private PunchDevice punch;
@@ -134,12 +139,14 @@ public class PaperTape extends RackUnit implements IODevice,
 	}
 
 	public PaperTape(Properties props, int base, int irq,
-			Interruptor intr) {
+			Interruptor intr, INS8251 tty) {
 		super(2);	// nothing fancy, yet
 		setBackground(RackUnit.BLUE);
 		name = "PTR_PTP";
 		this.intr = intr;
 		this.irq = irq;
+		this.tty = tty;
+		tty_rdr_adv_char = RDR;
 		src = intr.registerINT(irq);
 		last = new File(System.getProperty("user.dir"));
 		basePort = base;
@@ -153,6 +160,13 @@ public class PaperTape extends RackUnit implements IODevice,
 		s = props.getProperty("ptr_att");
 		if (s != null) {
 			reader.setFile(new File(s));
+		}
+		s = props.getProperty("mds800_rdr_adv_char");
+		if (s == null) {
+			s = props.getProperty("tty_rdr_adv_char");
+		}
+		if (s != null) {
+			tty_rdr_adv_char = Integer.decode(s) & 0xff;
 		}
 		GridBagLayout gb = new GridBagLayout();
 		setLayout(gb);
@@ -230,7 +244,9 @@ public class PaperTape extends RackUnit implements IODevice,
 			break;
 		case 1:
 			if ((val & CTL_TTY_ADV) != 0) {
-				// TODO: how to even implement this?
+				if (tty != null) {
+					tty.out(tty.getBaseAddress(), tty_rdr_adv_char);
+				}
 			}
 			if ((val & CTL_PTR_DRV) != 0) {
 				// TODO: handle direction?

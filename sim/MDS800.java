@@ -76,11 +76,10 @@ public class MDS800 implements MDS800Commander, Computer, Runnable {
 
 		addDevice(fp);
 		// TODO: InterruptController...
-		INS8251 sp;
-		sp = new INS8251(props, "tty", 0xf4, 3, fp);
-		addDevice(sp);
-		sp = new INS8251(props, "crt", 0xf6, 3, fp);
-		addDevice(sp);
+		INS8251 tty = new INS8251(props, "tty", 0xf4, 3, fp);
+		addDevice(tty);
+		INS8251 crt = new INS8251(props, "crt", 0xf6, 3, fp);
+		addDevice(crt);
 
 		s = props.getProperty("mds800_fdc");
 		if (s != null) {
@@ -90,7 +89,7 @@ public class MDS800 implements MDS800Commander, Computer, Runnable {
 		}
 		s = props.getProperty("mds800_pt");
 		if (s != null) {
-			PaperTape pt = new PaperTape(props, 0xf8, 3, fp);
+			PaperTape pt = new PaperTape(props, 0xf8, 3, fp, tty);
 			addDevice(pt);
 			fp.addPanel(pt);
 		}

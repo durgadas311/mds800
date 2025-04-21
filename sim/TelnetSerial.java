@@ -34,7 +34,7 @@ public class TelnetSerial implements SerialDevice, Runnable {
 			}
 		}
 		String host = argv.get(1);
-		int port = Integer.valueOf(argv.get(2));
+		int port = Integer.decode(argv.get(2));
 		dbg = String.format("TelnetSerial %s %d\n", host, port);
 		InetAddress ia;
 		try {
