@@ -52,7 +52,7 @@ ptdat	equ	0f8h	; read PTR, write PTP
 ptsts	equ	0f9h	; read - PTR/P status
 ptctl	equ	0f9h	; write - PTR/P control
 intsts	equ	0fah	; read - TTY/CRT/PTP/PTR/LPT intr status
-lptdat	equ	0fah	; write - LPT data out
+lptdat	equ	0fah	; write - LPT data out - inverted
 lptsts	equ	0fbh	; read - LPT status
 lptctl	equ	0fbh	; write - LPT control
 ; ptsts:
@@ -69,7 +69,7 @@ ptrdrv	equ	00001000b	; PTR strobe reader one char
 ptpfor	equ	00010000b	; PTP forward? (direction?)
 ptpadv	equ	00100000b	; PTP punch one char
 ; lptsts:
-lptbsy	equ	00000001b	; LPT busy (data)
+lptbsy	equ	00000001b	; LPT busy (data) - active low
 lptstt	equ	00000010b	; LPT stat? error/ready?
 
 ;intsts and intctl:
@@ -1114,7 +1114,7 @@ lstout:	lda	iobyte		;; fd84: 3a 03 00    :..
 	mvi	a,LOW ul1out	;; fd93: 3e fa       >.
 	jz	usrvec		;; fd95: ca 0a fd    ...
 Lfd98:	in	lptsts		;; fd98: db fb       ..
-	ani	001h		;; fd9a: e6 01       ..
+	ani	lptbsy		;; fd9a: e6 01       ..
 	jz	Lfd98		;; fd9c: ca 98 fd    ...
 	mov	a,c		;; fd9f: 79          y
 	cma			;; fda0: 2f          /
