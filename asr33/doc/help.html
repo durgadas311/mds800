@@ -1,0 +1,80 @@
+<HTML>
+<HEAD>
+</HEAD>
+<BODY>
+<H2>ASR33 Teletype Help</H2>
+
+<H3>Controls</H3>
+
+<P>The menu item PTape->Punch selects a file to use for the paper tape punch.
+Any previous content is lost. Editing (backspacing) is not supported.
+
+<P>The menu item PTape->Reader selects a file to use for the paper tape reader.
+In order to re-wind a file, re-select it from this menu.
+Positioning to a specific location is not supported.
+
+<P>LOCAL checkbox selects between LOCAL (checked) or LINE (unchecked)
+mode of operation. In LOCAL mode all characters from the remote
+are dropped and keys pressed are not sent to the remote but
+rather printed locally.
+
+<P>If a file has been mounted on the Punch device, the PUNCH
+checkbox indicates whether the punch is on - in which case
+anything printed will also be punched.
+
+<P>If a file has been mounted on the Reader device,
+the READER checkbox indicates whether the reader is
+enabled (ready) - in which case it is turned on and off by
+X-ON and X-OFF characters or does a single-character
+read if a command is received.
+
+<P>This implementation recognizes the SI character (Ctrl-O, 0x0F)
+to trigger a single character read from tape.
+That character may be changed with the "rdr_adv_char" property.
+
+<P>If the Reader is in the ready state, the "start"
+button may be used to start reading tape and sending to the remote.
+Whenever the reader is active, the "start" button will be
+illuminated.
+
+<H3>Keyboard</H3>
+
+<P>F12 functions as the HERE IS key. The answer-back
+drum defaults to NUL characters, but may be set to
+a string using the "ansbak" property (20 characters maximum).
+
+<P>Enter produces CR, use Ctrl-J for LF.
+
+<P>All characters in the upper ASCII-7 bank except DEL (0x7f)
+are folded into the upper-case bank.
+
+<P>Delete produces the RUB OUT character 0xff.
+
+<P>The menu item Print->Copy (also Alt-C)
+will copy any selected text (the usual mouse click-drag) to the clipboard.
+
+<P>The menu item Print->Paste (also Alt-V or middle mouse button)
+will paste text from the clipboard as keyboard input.
+
+<H3>Misc</H3>
+
+<P>Characters transmitted for the Reader or HERE IS function,
+or pasted into the window,
+are delayed according to the "delay" property, the number
+of milliseconds to delay after each character.
+Default is 100 milliseconds.
+
+<P>Pasted text being transmitted may be cancelled by pressing the F1 key.
+
+<P>If the connection to the remote is lost or not present to begin with,
+the menu item Print->Reconnect may be used to attempt to re-connect to the remote.
+The host and port may not be changed.
+
+<P>Currently, the printer window does not properly handle CR.
+A CR-LF pair will be fine, but attempts to use CR alone will not have
+good results. The CR character essentially does nothing, so characters
+following the CR do not overwrite at the beginning of the line but rather
+continue on at the end of the line.
+
+</BODY>
+</HTML>
