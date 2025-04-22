@@ -27,17 +27,37 @@ dchome	equ	3	; seek track 0
 dcredy	equ	0001b	; dstat floppy ready
 dcfini	equ	0100b	; dstat I/O finished
 
-promda	equ	0f0h
+promda	equ	0f0h	; write starts programming, read either uses /WAIT
+			; or sets "start read" and polls promst for !uppbsy.
+			; Monitor depends on /WAIT.
 promah	equ	0f1h	; write (ah+ctrl bits) direct to programmer
 promst	equ	0f1h	; read - direct from programmer
 promal	equ	0f2h	; write - direct to programmer
 intctl	equ	0f3h	; write - bit 7 enables TTY/CRT/PTP/PTR/LPT intrs
 			;	  6:0 reset intr sources, see intsts
+; promst
+uppori	equ	10000000b	; orientation error
+uppbrd	equ	01000000b	; board sense error
+upphwe	equ	00100000b	; hardware error
+uppadr	equ	00010000b	; address error
+upppgm	equ	00001000b	; programming error
+uppftp	equ	00000100b	; failed to program
+uppok	equ	00000010b	; operation complete verified
+uppbsy	equ	00000001b	; busy
+; promah - CRSNAAAA
+;	C = Control #1 (0)
+;	R = start Read
+;	S = Socket select (1=#1, 0=#2)
+;	N = Nibble select (1=high)
+;	A = Addr 11:8
+; promal - AAAAAAAA
+;	A = Addr 7:0
+
 ; values for promah:
 promam	equ	0fffh	; PROM address mask - 4K max
-promsX	equ	00ffh	; socket X (low byte unused?)
-promsY	equ	30f0h	; socket Y (low byte unused?)
-promsZ	equ	200fh	; socket Z (low byte unused?)
+promsX	equ	00ffh	; socket X (low byte unused?) C=0, R=0, S=0, N=0 (8-bit?)
+promsY	equ	30f0h	; socket Y (low byte unused?) C=0, R=0, S=1, N=1
+promsZ	equ	200fh	; socket Z (low byte unused?) C=0, R=0, S=1, N=0
 ; intctl:
 chrie	equ	10000000b	; enable all char I/O interrupts
 
@@ -491,26 +511,26 @@ Ccmd:	call	Lff94		;; f945: cd 94 ff    ...
 	push	b		;; f948: c5          .
 	mvi	c,2		;; f949: 0e 02       ..
 	call	Lfe57		;; f94b: cd 57 fe    .W.
-	pop	d		;; f94e: d1          .
-	pop	h		;; f94f: e1          .
-	pop	b		;; f950: c1          .
+	pop	d	; prom addr
+	pop	h	; mem addr
+	pop	b	; prom socket word - B=ctl, C=msk
 	push	b		;; f951: c5          .
-	mvi	c,000h		;; f952: 0e 00       ..
+	mvi	c,000h	; start addr 000
 Lf954:	mov	a,b		;; f954: 78          x
 	out	promah		;; f955: d3 f1       ..
 	mov	a,c		;; f957: 79          y
 	out	promal		;; f958: d3 f2       ..
-Lf959	equ	$-1
-	in	promda		;; f95a: db f0       ..
+	in	promda	; /WAIT until done
 	push	h		;; f95c: e5          .
-	lxi	h,ramtop	;; f95d: 21 04 00    ...
+	lxi	h,ramtop	; data invert mask
 	xra	m		;; f960: ae          .
-	pop	h		;; f961: e1          .
+	pop	h	; data to compare
 	xra	m		;; f962: ae          .
-	xthl			;; f963: e3          .
-	ana	l		;; f964: a5          .
+	xthl		; prom socket word
+	ana	l	; mask off data bits
 	xthl			;; f965: e3          .
-	jz	Lf987		;; f966: ca 87 f9    ...
+	jz	Lf987	; OK - data is same
+	; report compare error
 	push	b		;; f969: c5          .
 	call	coneol		;; f96a: cd 18 fe    ...
 	call	adrout		;; f96d: cd 7a fe    .z.
@@ -521,12 +541,12 @@ Lf959	equ	$-1
 	in	promda		;; f97a: db f0       ..
 	call	hexout		;; f97c: cd 82 fe    ...
 	in	promst		;; f97f: db f1       ..
-	ani	002h		;; f981: e6 02       ..
+	ani	uppok		;; f981: e6 02       ..
 	jz	abort		;; f983: ca 26 f8    .&.
 	pop	b		;; f986: c1          .
-Lf987:	inx	b		;; f987: 03          .
-	call	Lfe6a		;; f988: cd 6a fe    .j.
-	jnc	Lf954		;; f98b: d2 54 f9    .T.
+Lf987:	inx	b	; next prom addr
+	call	Lfe6a	; check for buffer end
+	jnc	Lf954	; keep going until end
 	pop	b		;; f98e: c1          .
 	ret			;; f98f: c9          .
 
@@ -701,10 +721,10 @@ Lfab5:	mov	a,b		;; fab5: 78          x
 	xra	m		;; fabf: ae          .
 	out	promda		;; fac0: d3 f0       ..
 Lfac2:	in	promst		;; fac2: db f1       ..
-	ani	001h	; busy?
+	ani	uppbsy	; busy?
 	jnz	Lfac2		;; fac6: c2 c2 fa    ...
 	in	promst		;; fac9: db f1       ..
-	ani	002h	; done/OK
+	ani	uppok	; done/OK
 	jz	Lfad7		;; facd: ca d7 fa    ...
 	call	Lfe6a	; check ++HL for reaching DE
 	jnc	Lfab5		;; fad3: d2 b5 fa    ...
@@ -844,7 +864,7 @@ Lfba3:	mov	a,b		;; fba3: 78          x
 	pop	h		;; fbb1: e1          .
 	mov	m,a		;; fbb2: 77          w
 	in	promst		;; fbb3: db f1       ..
-	ani	002h		;; fbb5: e6 02       ..
+	ani	uppok		;; fbb5: e6 02       ..
 	jz	abort		;; fbb7: ca 26 f8    .&.
 	call	Lfe6a		;; fbba: cd 6a fe    .j.
 	jnc	Lfba3		;; fbbd: d2 a3 fb    ...

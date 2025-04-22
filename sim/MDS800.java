@@ -26,6 +26,7 @@ public class MDS800 implements MDS800Commander, Computer, Runnable {
 	private Semaphore stopWait;
 	private Vector<ClockListener> clks;
 	private Vector<TimeListener> times;
+	private Vector<PowerListener> pwrs;
 	private	int cpuSpeed = 2000000;
 	private int cpuCycle1ms = 2000;
 	private int nanoSecCycle = 500;
@@ -47,6 +48,7 @@ public class MDS800 implements MDS800Commander, Computer, Runnable {
 		dsks = new Vector<DiskController>();
 		clks = new Vector<ClockListener>();
 		times = new Vector<TimeListener>();
+		pwrs = new Vector<PowerListener>();
 		intrs = new Vector<InterruptController>();
 		// Do this early, so we can log messages appropriately.
 		s = props.getProperty("mds800_log");
@@ -82,16 +84,22 @@ public class MDS800 implements MDS800Commander, Computer, Runnable {
 		addDevice(crt);
 
 		s = props.getProperty("mds800_fdc");
-		if (s != null) {
-			MDS_FDC fdc = new MDS_FDC(props, "FDC", 0x78, 6, 0, mem, fp);
+		if (s != null && s.equalsIgnoreCase("yes")) {
+			MDS_FDC fdc = new MDS_FDC(props, "FDC", 0x78, 6, 0, mem, fp, this);
 			addDiskDevice(fdc);
 			fp.addPanel(fdc);
 		}
 		s = props.getProperty("mds800_pt");
-		if (s != null) {
+		if (s != null && s.equalsIgnoreCase("yes")) {
 			PaperTape pt = new PaperTape(props, 0xf8, 3, fp, tty);
 			addDevice(pt);
 			fp.addPanel(pt);
+		}
+		s = props.getProperty("mds800_upp");
+		if (s != null && s.equalsIgnoreCase("yes")) {
+			UnivPromProgrammer upp = new UnivPromProgrammer(props, 0xf0, this);
+			addDevice(upp);
+			fp.addPanel(upp);
 		}
 
 		s = props.getProperty("mds800_trace");
@@ -226,6 +234,9 @@ public class MDS800 implements MDS800Commander, Computer, Runnable {
 	public void addTimeListener(TimeListener lstn) {
 		times.add(lstn);
 	}
+	public void addPowerListener(PowerListener lstn) {
+		pwrs.add(lstn);
+	}
 	public void addIntrController(InterruptController ctrl) {
 		// There really should be only zero or one.
 		intrs.add(ctrl);
@@ -245,8 +256,8 @@ public class MDS800 implements MDS800Commander, Computer, Runnable {
 		if (!on) {
 			stop();
 		}
-		for (DiskController dev : dsks) {
-			dev.setPower(on);
+		for (PowerListener pl : pwrs) {
+			pl.setPower(on);
 		}
 		if (on) {
 			start();

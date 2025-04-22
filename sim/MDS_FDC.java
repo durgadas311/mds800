@@ -11,7 +11,7 @@ import javax.swing.border.*;
 import java.util.concurrent.Semaphore;
 
 // TODO: add GUI...
-public class MDS_FDC extends RackUnit implements DiskController,
+public class MDS_FDC extends RackUnit implements DiskController, PowerListener,
 				ActionListener, MouseListener, Runnable {
 	// iopb:
 	//	db	ctrl: xxDDxCCC C=command, D=unit
@@ -285,7 +285,7 @@ public class MDS_FDC extends RackUnit implements DiskController,
 
 	// Main rack, controller and 2 drives
 	public MDS_FDC(Properties props, String label, int base, int irq, int lun,
-						MDSMemory mem, Interruptor intr) {
+					MDSMemory mem, Interruptor intr, MDS800 mds) {
 		// TODO: handle LUN...
 		super(4);	// 4U height
 		setBackground(RackUnit.BLUE);
@@ -295,6 +295,7 @@ public class MDS_FDC extends RackUnit implements DiskController,
 		FDCpanel(this, 0, 2);
 		// power is off initially...
 		pwrOn = false;
+		mds.addPowerListener(this);
 		reset();
 		Thread t = new Thread(this);
 		t.start();
@@ -722,6 +723,7 @@ public class MDS_FDC extends RackUnit implements DiskController,
 		return ret;
 	}
 
+	// PowerListener
 	public void setPower(boolean on) {
 		pwrOn = on;
 		reset();
