@@ -8,6 +8,7 @@ import java.io.*;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.Properties;
+import javax.swing.JFrame;
 
 import z80core.*;
 import z80debug.*;
@@ -20,6 +21,7 @@ public class MDS800 implements MDS800Commander, Computer, Runnable {
 	private Vector<IODevice> devs;
 	private Vector<DiskController> dsks;
 	private Vector<InterruptController> intrs;
+	private Vector<JFrame> frames;
 	private MDSMemory mem;
 	private boolean running;
 	private boolean stopped;
@@ -33,6 +35,18 @@ public class MDS800 implements MDS800Commander, Computer, Runnable {
 	private long backlogNs;
 	private CPUTracer trc;
 	private ReentrantLock cpuLock;
+
+	class IOIntCtrl implements IODevice {
+		MDSFrontPanel fp;
+		public IOIntCtrl(MDSFrontPanel fp) { this.fp = fp; }
+		public void reset() {}
+		public int getBaseAddress() { return 0xf3; }
+		public int getNumPorts() { return 1; }
+		public int in(int port) { return 0; }
+		public void out(int port, int value) { fp.outF3(port, value); }
+		public String getDeviceName() { return null; }
+		public String dumpDebug() { return ""; }
+	};
 
 	public MDS800(Properties props, MDSFrontPanel fp) {
 		String s;
@@ -50,6 +64,7 @@ public class MDS800 implements MDS800Commander, Computer, Runnable {
 		times = new Vector<TimeListener>();
 		pwrs = new Vector<PowerListener>();
 		intrs = new Vector<InterruptController>();
+		frames = new Vector<JFrame>();
 		// Do this early, so we can log messages appropriately.
 		s = props.getProperty("mds800_log");
 		if (s != null) {
@@ -77,11 +92,17 @@ public class MDS800 implements MDS800Commander, Computer, Runnable {
 		mem = new MDSMemory(props, fp);
 
 		addDevice(fp);
+		addDevice(new IOIntCtrl(fp));
 		// TODO: InterruptController...
 		INS8251 tty = new INS8251(props, "tty", 0xf4, 3, fp);
 		addDevice(tty);
 		INS8251 crt = new INS8251(props, "crt", 0xf6, 3, fp);
 		addDevice(crt);
+
+		// FP must share I/O intr status port with LPT...
+		MDS_LPT lpt = new MDS_LPT(props, 0xfa, fp);
+		addDevice(lpt);
+		frames.add(lpt);
 
 		s = props.getProperty("mds800_fdc");
 		if (s != null && s.equalsIgnoreCase("yes")) {
@@ -154,6 +175,10 @@ public class MDS800 implements MDS800Commander, Computer, Runnable {
 
 	public Vector<DiskController> getDiskDevices() {
 		return dsks;
+	}
+
+	public Vector<JFrame> getFrames() {
+		return frames;
 	}
 
 	public boolean addDiskDevice(DiskController dev) {

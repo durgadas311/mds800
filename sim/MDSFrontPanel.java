@@ -57,6 +57,9 @@ public class MDSFrontPanel implements IODevice, InterruptController, Interruptor
 	private int i8259_cur;		// currently serviced intr
 	private int i8259_rsel;		// register select for input
 	private boolean i8259_smm;	// not supported
+	private int ioSrc;
+	private int ioInts;
+	private boolean ioIntEna;
 	JFrame main;
 
 	public MDSFrontPanel(JFrame frame, Properties props) {
@@ -259,6 +262,8 @@ public class MDSFrontPanel implements IODevice, InterruptController, Interruptor
 		// reset for addPanel()...
 		gc.gridx = 0;
 		gc.gridy = 2;
+
+		ioSrc = registerINT(3);
 	}
 
 	private void setGap(JPanel panel, int w, int h) {
@@ -369,6 +374,26 @@ public class MDSFrontPanel implements IODevice, InterruptController, Interruptor
 		i8259_lev = 0;
 		i8259_cur = 0; // TODO: need an invalid value?
 		i8259_rsel = 0;
+		sys.lowerINT();
+	}
+
+	public void addIOFrame(JFrame frame) {
+		// create/add menu item for "frame.setVisible(true/false)"
+	}
+
+	// Stray port we need to own... I/O intr ctrl - reset int sources
+	public void outF3(int port, int val) {
+		ioIntEna = (val & Interruptor.IO_INT_ENA) != 0;
+		ioInts &= ~val;
+		if (ioInts == 0 || !ioIntEna) {
+			lowerINT(3, ioSrc);
+		} else {
+			raiseINT(3, ioSrc);
+		}
+	}
+	// LPT "owns" ports FA,FB... except input on FA (I/O intr status)
+	public int inFA() {
+		return ioInts;
 	}
 
 	////////////////////////////////////
@@ -379,6 +404,8 @@ public class MDSFrontPanel implements IODevice, InterruptController, Interruptor
 		run.set(false);
 		hlt.set(false);
 		clk1ms = false;
+		ioIntEna = false;
+		ioInts = 0;
 	}
 
 	public int getBaseAddress() {
@@ -560,6 +587,13 @@ public class MDSFrontPanel implements IODevice, InterruptController, Interruptor
 		__lowerINT(irq, src);
 		if (intLines[irq] == 0) {
 			clearInt(irq);
+		}
+	}
+
+	public void triggerIOInt(int dev) {
+		ioInts |= dev;
+		if (ioInts != 0 && ioIntEna) {
+			raiseINT(3, ioSrc);
 		}
 	}
 

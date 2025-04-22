@@ -48,6 +48,7 @@ public class VirtualMDS800 {
 		// All LEDs should be registered now...
 		MDS800Operator op = new MDS800Operator(front_end, props);
 		op.setCommander(mds.getCommander());
+		op.addFrames(mds.getFrames());
 
 		front_end.pack();
 		front_end.setVisible(true);

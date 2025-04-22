@@ -16,6 +16,7 @@ public class MDS800Operator implements ActionListener, ResetListener, Runnable
 	JMenuBar _mb;
 	JMenu _sys_mu;
 	JMenu _dev_mu;
+	JMenu _io_mu;
 	int _reset_key;
 	int _tracecust_key;
 	int _traceon_key;
@@ -68,6 +69,7 @@ public class MDS800Operator implements ActionListener, ResetListener, Runnable
 	Map<Integer, String> _drvs;
 	Map<Integer, String> _mdia;
 	Map<Integer, JMenuItem> _mnus;
+	Map<Integer, JFrame> _ios;
 	String[] sufx = {"logdisk" };
 	String[] sufd = {"Sector Image" };
 	private java.util.concurrent.LinkedBlockingDeque<Integer> _cmds;
@@ -82,6 +84,7 @@ public class MDS800Operator implements ActionListener, ResetListener, Runnable
 		_drvs = new HashMap<Integer, String>();
 		_mdia = new HashMap<Integer, String>();
 		_mnus = new HashMap<Integer, JMenuItem>();
+		_ios = new HashMap<Integer, JFrame>();
 		_cmds = new java.util.concurrent.LinkedBlockingDeque<Integer>();
 		JMenuBar _mb = new JMenuBar();
 
@@ -137,6 +140,9 @@ public class MDS800Operator implements ActionListener, ResetListener, Runnable
 		_sys_mu.add(mi);
 		// More added when computer connected
 		_mb.add(_sys_mu);
+
+		_io_mu = new JMenu("I/O");
+		_mb.add(_io_mu);
 
 		_dev_mu = new JMenu("Disks");
 		_mb.add(_dev_mu);
@@ -241,6 +247,19 @@ public class MDS800Operator implements ActionListener, ResetListener, Runnable
 		// now initialize some more menus.
 		setupDeviceDumps();
 		refreshDisks();
+	}
+
+	public void addFrames(Vector<JFrame> frames) {
+		// add menu items to set visibility...
+		// use class name???
+		for (JFrame frm : frames) {
+//System.err.format("adding %s\n", frm.getClass().getName());
+			int iokey = _key++;
+			JMenuItem mi = new JMenuItem(frm.getClass().getName(), iokey);
+			mi.addActionListener(this);
+			_io_mu.add(mi);
+			_ios.put(iokey, frm);
+		}
 	}
 
 	public void setupDeviceDumps() {
@@ -614,6 +633,12 @@ public class MDS800Operator implements ActionListener, ResetListener, Runnable
 					dir = new File(".");
 				}
 System.err.format("plug in Operator to FDC rack\n");
+				continue;
+			}
+			if (_ios.containsKey(key)) {
+				JFrame frm = _ios.get(key);
+				frm.setVisible(true);
+				// or toggle?
 				continue;
 			}
 			if (key == _about_key) {
