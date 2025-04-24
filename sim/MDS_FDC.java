@@ -506,6 +506,7 @@ public class MDS_FDC extends RackUnit implements DiskController, PowerListener,
 	private void cmdXfer(boolean write) {
 		if (write) {
 			curBuf[dataIdx++] = (byte)mem.read(iopbDma++);
+			dirty = true;
 			if (dataIdx >= 128) {
 				if (flushBuf() != 0) {
 					cmdError(RBYTE_WE);
@@ -522,7 +523,6 @@ public class MDS_FDC extends RackUnit implements DiskController, PowerListener,
 		} else {
 			// TODO: mutex?
 			mem.write(iopbDma++, curBuf[dataIdx++]);
-			dirty = true;
 			if (dataIdx >= 128) {
 				if (--multi == 0) {
 					cmdComplete();
