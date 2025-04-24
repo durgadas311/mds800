@@ -1,0 +1,47 @@
+<HTML>
+<HEAD>
+</HEAD>
+<BODY>
+<H2>ASR33 Teletype Properties</H2>
+
+<P>Properties with the "asr33_" prefix may be specified on the
+commandline by removing the prefix.
+Quotes around values may be required, depending on your shell.
+
+<DL>
+<DT>asr33_host
+<DD>The hostname or IP address to connect to.
+This is the same as the first non-property, non-config-file, argument
+on the command line.
+</DD>
+
+<DT>asr33_port
+<DD>The port number to connect to.
+This is the same as the second non-property, non-config-file, argument
+on the command line.
+</DD>
+
+<DT>asr33_ansbak
+<DD>Specifies a string to use for the Answer-back drum.
+Typically, this drum generated NUL characters, and that is the default.
+A maximum of 20 characters is used, with the remaining positions
+on the drum being left as NUL characters.
+</DD>
+
+<DT>asr33_delay
+<DD>The delay inserted after each character is pasted or otherwise
+automatically sent to the host, in milliseconds. Default is 100.
+
+<DT>asr33_rdr_adv_char<BR>
+tty_rdr_adv_char
+<DD>The control character to use for performing a single-character
+read operation ("advance") on the paper tape reader.
+This emulates the Teletype feature of a solenoid on the reader
+that is activated by a handshake signal on the host interface.
+This needs to match whatever is used on the host (e.g. MDS-800)
+to trigger the reader advance. Default is 0x0f (Ctrl-O).
+</DD>
+</DL>
+
+</BODY>
+</HTML>

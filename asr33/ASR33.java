@@ -465,10 +465,10 @@ public class ASR33 extends JFrame
 			c = '\r';
 		}
 		if (k == KeyEvent.VK_DELETE) {
-			c = 0xff;
+			c = 0x7f;
 		}
 		// The keyboard can only produce upper case
-		if (c >= '`' && c <= 0x7f) {
+		if (c >= '`' && c < 0x7f) {
 			c &= 0x5f;
 		}
 		typeChar(c);

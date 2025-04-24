@@ -6,8 +6,9 @@
 
 <P><A HREF="properties.html">Properties</A>
 <P><A HREF="debugging.html">Debugging</A>
+<P><A HREF="appliances.html">Console Appliances</A>
 
-<H3>Running</H3>
+<H3>Running The Simulation</H3>
 
 <P>The general command syntax is:
 
@@ -23,6 +24,44 @@ given in <I>cfg</I>. <I>prop</I> will be prefixed by <B>mds800_</B>
 unless it begins with a period. Remember to enclose <I>value</I> in quotes if
 required by your shell.</DD>
 </DL>
+
+<H3>Operating The MDS-800</H3>
+
+<P>Operating the MDS-800 simulation is very similar to using the real
+hardware. Most procedures are covered by the
+<A HREF="https://bitsavers.org/pdf/intel/MDS800/98-129A_MDS800_Operator_Manual_1975.pdf">
+MDS-800 Operator's Manual</A> available on BitSavers.
+
+<P>The general producedure to run the monitor is:
+<OL>
+<LI>Start the simulation
+<LI>Start appliances for the CRT (and optionally TTY) ports
+<LI>Set the power switch to ON
+<LI>Set the BOOT switch on
+<LI>Press the RESET switch
+<LI>Hit the SPACE key on the CRT appliance (or TTY, if that
+is to be the console)
+<LI>Look for the monitor signon message (booting from disk does not print anything)
+<LI>Set the BOOT switch to OFF
+<LI>The console should show signon messages and command prompts, and be ready
+for input
+</OL>
+
+<P>The general procedure for booting an OS from flopy diskette is:
+<OL>
+<LI>Start the simulation (with FDC device and sufficient memory installed)
+<LI>Start appliances for the CRT (and optionally TTY) ports
+<LI>Set the power switch to ON
+<LI>Insert the desired boot disk in the first drive
+<LI>Set the BOOT switch on
+<LI>Press the RESET switch
+<LI>Hit the SPACE key on the CRT appliance (or TTY, if that
+is to be the console)
+<LI>Look for disk drive activity to subside
+<LI>Set the BOOT switch to OFF
+<LI>The console should show signon messages and command prompts, and be ready
+for input
+</OL>
 
 </BODY>
 </HTML>

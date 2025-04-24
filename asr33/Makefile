@@ -14,4 +14,7 @@ ASR33telnet.jar: all
 	echo "Main-Class: ASR33telnet" >Manifest.txt
 	jar -cmf Manifest.txt ASR33telnet.jar *.class doc
 
+ship: jar
+	rsync -Wuv $(JARS) ../bin
+
 __FRC__:

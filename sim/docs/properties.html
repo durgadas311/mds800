@@ -1,0 +1,151 @@
+<HTML>
+<HEAD>
+</HEAD>
+<BODY>
+<H2>Virtual MDS-800 Properties</H2>
+
+Properties that begin with "mds800_" may be specified on the
+commandline without the prefix.
+
+<P>Note that the optional LST device LPT is always present
+but is not assigned by default in the iobyte.
+The default iobyte first digit may be set to "2" to assign LPT to LST
+without making a manual assignment.
+
+<P>A property (config) file may be specified on the commandline,
+or a default is chosen from the CONFIG_MDS800 environment variable,
+"mds800rc" in the current directory,
+or ".mds800rc" in the user's home directory.
+
+<H3>MDS-800 Properties</H3>
+
+<DL>
+<DT>mds800_log
+<DD>Redirect simulation output to the specified file.
+</DD>
+
+<DT>mds800_mon
+<DD>The specified image is used for the Monitor ROM.
+May refer to the built image "intel_monitor.rom", or to any
+(2K) file on the local computer.
+<P>Note that the original (first revision) MDS-800 monitor board
+used inverted address lines to drive the monitor ROM,
+resulting in the physical ROM image being reversed.
+This is the condition for the "intel_monitor.bin" file
+posted on BitSavers. If a reversed image is to be used here,
+the "rev" keyword should be appended after the file name (separated by a space).
+</DD>
+
+<DT>mds800_boot
+<DD>The specified image is used for the Boot ROM.
+May refer to the built image "1702_MDS.rom", or to any
+(256B) file on the local computer.
+</DD>
+
+<DT>mds800_iobyte
+<DD>The default iobyte in the Boot ROM may be overridden
+using this property. The value must be a 4-digit base-4 (digits 0-3)
+number that ends with "0". The digits represent fields in the iobyte,
+with the first (most significant) digit being for LST, next for RDR,
+and third for PUN. See the MDS-800 Operator's Manual for an explanation
+of the iobyte. The default in the Boot ROM is "0000".
+</DD>
+
+<DT>mds800_ram
+<DD>Specifies the amount of RAM installed, in K bytes.
+Forced to a multiple of 4K. Default is 16K.
+</DD>
+
+<DT>mds800_fdc
+<DD>"yes" specifies the existence of the Floppy Controller.
+It causes a new rack to be added to the basic MDS chassis.
+This version only supports single density and 2 drives.
+</DD>
+
+<DT>mds800_pt
+<DD>"yes" specifies the existence of the High Speed Paper Tape
+reader/punch.
+It causes a new rack to be added to the basic MDS chassis.
+The default iocyte PUN and RDR digits may be changed to "1" to use this device
+without manual assignment.
+</DD>
+
+<DT>mds800_upp
+<DD>"yes" specifies the existence of the Universal PROM Programmer.
+It causes a new rack to be added to the basic MDS chassis.
+</DD>
+
+</DL>
+
+<H3>CRT Device</H3>
+
+<DL>
+<DT>crt_att
+<DD>Specifies how to connect to the CRT serial port.
+Typical value is "TelnetSerial &lt;host-or-ip&gt; &lt;port&gt;" to use
+a telnet-like connection. This works for the H19telnet.jar
+and ASR33telnet.jar appliances.
+</DD>
+</DL>
+
+<H3>TTY Device</H3>
+
+<DL>
+<DT>tty_att
+<DD>Specifies how to connect to the TTY serial port.
+Typical value is "TelnetSerial &lt;host-or-ip&gt; &lt;port&gt;" to use
+a telnet-like connection. This works for the H19telnet.jar
+and ASR33telnet.jar appliances.
+<P>In order to use the TTY paper tape reader (as implemented
+in the ASR33telnet.jar appliance), the "tty_rdr_adv_char" property
+must be specified for both the ASR33 appliance and the High Speed
+Paper Tape device, and both must use the same value.
+Default is 0x0f (Ctrl-O).
+</DD>
+</DL>
+
+<H3>Floppy Disk Controller</H3>
+
+<DL>
+
+<DT>fdc_disk<I>unit</I>
+<DD>Where <I>unit</I> is "1" or "2".
+Specifies the initial floppy image file to be inserted in the drive.
+Note that by default this image is R/O. To make it R/W, append a "rw" keyword
+after the file name.
+</DD>
+
+<DT>fdc_intr
+<DD>Not Used. Specifies the interrupt level to use for the controller.
+FDC interrupts are not supported.
+</DD>
+
+</DL>
+
+<H3>High Speed Paper Tape</H3>
+
+<DL>
+
+<DT>ptp_att
+<DD>Specifies the initial file (paper tape image) to be attached to the punch
+for output. Paper tape images are plain text files, although binary files
+may result if binary data is punched.</DD>
+
+<DT>ptr_att
+<DD>Specifies the initial file (paper tape image) to be attached to the reader
+for input. Paper tape images are plain text files, although binary files
+may be used if the reading software expects that.</DD>
+
+<DT>tty_rdr_adv_char<BR>
+mds800_rdr_adv_char
+<DD>Specifies the control character to use to cause the TTY
+device to read a single character from its papert tape reader.
+Note, this does not affect the high spead reader, but the hardware for
+triggering the TTY reader is bound to the high spead paper tape.
+Default is 0x0f (Ctrl-O).
+</DD>
+
+</DL>
+
+</BODY>
+</HTML>

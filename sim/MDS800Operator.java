@@ -15,6 +15,7 @@ public class MDS800Operator implements ActionListener, ResetListener, Runnable
 	LEDHandler _ledhandler;
 	JMenuBar _mb;
 	JMenu _sys_mu;
+	JMenu _dbg_mu;
 	JMenu _dev_mu;
 	JMenu _io_mu;
 	int _reset_key;
@@ -94,57 +95,68 @@ public class MDS800Operator implements ActionListener, ResetListener, Runnable
 			_help = new GenericHelp(main.getTitle() + " Help", url);
 		}
 
-		_sys_mu = new JMenu("System");
 		JMenuItem mi;
+		_sys_mu = new JMenu("System");
+		_sys_mu.addSeparator();	// avoid accidental RESET
+		_reset_key = _key++;
+		mi = new JMenuItem("Reset", _reset_key);
+		mi.addActionListener(this);
+		_sys_mu.add(mi);
+		_quit_key = _key++;
+		mi = new JMenuItem("Quit", _quit_key);
+		mi.addActionListener(this);
+		_sys_mu.add(mi);
+		_mb.add(_sys_mu);
+
+		_dbg_mu = new JMenu("Debug");
 		_tracecust_key = _key++;
 		mi = new JMenuItem("Trace (custom)", _tracecust_key);
 		mi.addActionListener(this);
-		_sys_mu.add(mi);
+		_dbg_mu.add(mi);
 		_traceon_key = _key++;
 		mi = new JMenuItem("Trace ON", _traceon_key);
 		mi.addActionListener(this);
-		_sys_mu.add(mi);
+		_dbg_mu.add(mi);
 		_traceoff_key = _key++;
 		mi = new JMenuItem("Trace OFF", _traceoff_key);
 		mi.addActionListener(this);
-		_sys_mu.add(mi);
+		_dbg_mu.add(mi);
 		dumpToLog = false;
 		_dump_key = _key++;
 		_dump_mi = new JMenuItem("Dump To Log", _dump_key);
 		_dump_mi.addActionListener(this);
-		_sys_mu.add(_dump_mi);
+		_dbg_mu.add(_dump_mi);
 		_cpu_key = _key++;
 		mi = new JMenuItem("Dump CPU", _cpu_key);
 		mi.addActionListener(this);
-		_sys_mu.add(mi);
+		_dbg_mu.add(mi);
 		_mach_key = _key++;
 		mi = new JMenuItem("Dump Machine", _mach_key);
 		mi.addActionListener(this);
-		_sys_mu.add(mi);
+		_dbg_mu.add(mi);
 		_mem_key = _key++;
 		mi = new JMenuItem("Dump MemSys", _mem_key);
 		mi.addActionListener(this);
-		_sys_mu.add(mi);
+		_dbg_mu.add(mi);
 		_last_core = new File(".");
 		_core_key = _key++;
 		mi = new JMenuItem("Dump Core", _core_key);
 		mi.addActionListener(this);
-		_sys_mu.add(mi);
+		_dbg_mu.add(mi);
 		_page_key = _key++;
 		mi = new JMenuItem("Dump Page", _page_key);
 		mi.addActionListener(this);
-		_sys_mu.add(mi);
+		_dbg_mu.add(mi);
 		_dasm_key = _key++;
 		mi = new JMenuItem("Disassemble", _dasm_key);
 		mi.addActionListener(this);
-		_sys_mu.add(mi);
-		// More added when computer connected
-		_mb.add(_sys_mu);
+		_dbg_mu.add(mi);
+		_mb.add(_dbg_mu);
 
-		_io_mu = new JMenu("I/O");
+		_io_mu = new JMenu("I/O"); // added to when devices created
 		_mb.add(_io_mu);
 
-		_dev_mu = new JMenu("Disks");
+		_dev_mu = new JMenu("Disks"); // TODO: hook this up
 		_mb.add(_dev_mu);
 
 		JMenu mu = new JMenu("Help");
@@ -275,16 +287,8 @@ public class MDS800Operator implements ActionListener, ResetListener, Runnable
 			mi = new JMenuItem("Dump " + dev, key);
 			mi.setText("Dump " + dev);
 			mi.addActionListener(this);
-			_sys_mu.add(mi);
+			_dbg_mu.add(mi);
 		}
-		_reset_key = _key++;
-		mi = new JMenuItem("Reset", _reset_key);
-		mi.addActionListener(this);
-		_sys_mu.add(mi);
-		_quit_key = _key++;
-		mi = new JMenuItem("Quit", _quit_key);
-		mi.addActionListener(this);
-		_sys_mu.add(mi);
 	}
 
 	// This only refreshes the media in the drives, not the drives.

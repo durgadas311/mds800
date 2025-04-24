@@ -4,13 +4,23 @@
 <BODY>
 <H2>ASR33 Teletype Help</H2>
 
+<P><A HREF="properties.html">Properties</A>
+
+<H3>Running</H3>
+
+<P>The general command syntax is:
+<P><KBD>java -jar ASR33telnet.jar [<I>cfg</I>] [<I>prop</I>=<I>value</I>...] [<I>host</I> <I>port</I>]</KBD>
+
 <H3>Controls</H3>
 
 <P>The menu item PTape->Punch selects a file to use for the paper tape punch.
-Any previous content is lost. Editing (backspacing) is not supported.
+Any previous content is lost.
+Clicking "Cancel" leaves no file selected (punch not operational).
+Editing (backspacing) is not supported.
 
 <P>The menu item PTape->Reader selects a file to use for the paper tape reader.
 In order to re-wind a file, re-select it from this menu.
+Clicking "Cancel" leaves no file selected (reader not operational).
 Positioning to a specific location is not supported.
 
 <P>LOCAL checkbox selects between LOCAL (checked) or LINE (unchecked)
@@ -43,12 +53,12 @@ illuminated.
 drum defaults to NUL characters, but may be set to
 a string using the "ansbak" property (20 characters maximum).
 
-<P>Enter produces CR, use Ctrl-J for LF.
+<P>The Enter key produces CR, use Ctrl-J for LF.
 
-<P>All characters in the upper ASCII-7 bank except DEL (0x7f)
+<P>All characters in the last ASCII-7 bank (lower case letters, etc) except DEL (0x7f)
 are folded into the upper-case bank.
 
-<P>Delete produces the RUB OUT character 0xff.
+<P>The Delete key produces the RUBOUT character 0x7f.
 
 <P>The menu item Print->Copy (also Alt-C)
 will copy any selected text (the usual mouse click-drag) to the clipboard.
