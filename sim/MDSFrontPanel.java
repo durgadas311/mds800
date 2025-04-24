@@ -353,11 +353,13 @@ public class MDSFrontPanel implements IODevice, InterruptController, Interruptor
 		if (irq < 0) {
 			return -1;
 		}
-		// TODO: support generic CALL to i8259_page
-		// adr = i8259_page + (irq * i8259_adi);
-		// 0: return 0xcd
-		// 1: return adr & 0xff
-		// 2: return adr >> 8
+		// TODO: support generic CALL to i8259_page?
+		// if (i8259_page != 0) {
+		//	adr = i8259_page + (irq * i8259_adi);
+		//	0: return 0xcd
+		//	1: return adr & 0xff
+		//	2: return adr >> 8
+		// } else {
 		return (0xc7 | (irq << 3));
 	}
 
@@ -473,7 +475,7 @@ public class MDSFrontPanel implements IODevice, InterruptController, Interruptor
 				// assume SINGLE
 				// assume EDGE TRIGGERED
 				// not used (yet):
-				i8259_page = (value & 0x70);
+				i8259_page = (value & 0xe0);
 				i8259_adi = (value & 0x04);
 				if (i8259_adi == 0) i8259_adi = 8;
 			} else if ((value & 0x08) == 0x00) { // OCW2
@@ -514,7 +516,7 @@ public class MDSFrontPanel implements IODevice, InterruptController, Interruptor
 		ret += String.format("i8259 init=%s page=%04x adi=%d cmd=%x/%x\n",
 				i8259_init, i8259_page, i8259_adi,
 				i8259_cmd, i8259_lev);
-		ret += String.format("      cur=%d rr=%x smm=%%s\n",
+		ret += String.format("      cur=%d rr=%x smm=%s\n",
 				i8259_cur, i8259_rsel, i8259_smm);
 		ret += String.format("BOOT=%s  1mS=%s\n", bootOn(), clk1ms);
 		return ret;
