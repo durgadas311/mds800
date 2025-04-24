@@ -10,11 +10,15 @@ public class EPROM implements Rom {
 	protected int org;
 	protected int msk;
 	protected int xor = 0;
+	private String path;
 
 	private InputStream openROM(String rom) throws Exception {
 		Exception ex = null;
+		InputStream is;
 		try {
-			return new FileInputStream(rom);
+			is = new FileInputStream(rom);
+			path = "file:"+rom;
+			return is;
 		} catch (Exception ee) {
 			ex = ee;
 		}
@@ -22,6 +26,7 @@ public class EPROM implements Rom {
 			// This returns null if not found!
 			InputStream fi = this.getClass().getResourceAsStream(rom);
 			if (fi != null) {
+				path = "jar:" + rom;
 				return fi;
 			}
 		} catch (Exception ee) {
@@ -61,6 +66,7 @@ public class EPROM implements Rom {
 	}
 
 	public String dumpDebug() {
-		return String.format("%d ROM at %04x ^ %04x\n", rom.length, org, xor);
+		return String.format("%d ROM at %04x ^ %04x %s\n",
+				rom.length, org, xor, path);
 	}
 }
