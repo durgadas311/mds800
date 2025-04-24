@@ -106,7 +106,7 @@ public class MDS800 implements MDS800Commander, Computer, Runnable {
 
 		s = props.getProperty("mds800_fdc");
 		if (s != null && s.equalsIgnoreCase("yes")) {
-			MDS_FDC fdc = new MDS_FDC(props, "FDC", 0x78, 6, 0, mem, fp, this);
+			MDS_FDC fdc = new MDS_FDC(props, "FDC", 0x78, 2, mem, fp, this);
 			addDiskDevice(fdc);
 			fp.addPanel(fdc);
 		}

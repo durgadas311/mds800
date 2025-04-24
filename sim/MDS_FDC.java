@@ -1,4 +1,4 @@
-// Copyright (c) 2018 Douglas Miller <durgadas311@gmail.com>
+// Copyright (c) 2025 Douglas Miller <durgadas311@gmail.com>
 
 import java.util.Arrays;
 import java.util.Vector;
@@ -24,23 +24,39 @@ public class MDS_FDC extends RackUnit implements DiskController, PowerListener,
 	//	in port+3 get result byte
 
 	
-	private static final int STS_DONE = 0x04;
-	private static final int STS_RDY0 = 0x01;
+	private static final int STS_RDY3 = 0x40;
+	private static final int STS_RDY2 = 0x20;
+	private static final int STS_DD   = 0x10;	// DD present
+	private static final int STS_CTRL = 0x08;	// controller present
+	private static final int STS_DONE = 0x04;	// "interrupt pending" - transient
 	private static final int STS_RDY1 = 0x02;
+	private static final int STS_RDY0 = 0x01;
+
+	// first byte of iopb:
+	private static final int CH_RND	= 0x40;	// random sector table for FORMAT
+	private static final int CH_INT	= 0x30;	// 00 = interrupt CPU, 01 = disabled
+	private static final int CH_16B	= 0x08;	// 16-bit bus/data...
 
 	private static final int MSK_CMD	= 0x07;
+	private static final int MSK_16B	= 0x08;	// 16-bit bus/data...
 	private static final int MSK_UNIT	= 0x30;
 	private static final int SHF_UNIT	= 4;
 	private static final int MSK_SEC	= 0x1f; // oddity in ctrlr:
-	private static final int MSK_SEC_DBK	= 0x20; // "disk bank"
+							// newer supt 52 sectors (0x3f)
+	private static final int MSK_SEC_DBK	= 0x20; // "disk bank" in DRI CP/M
 	private static final int MSK_TRK	= 0x7f; // needed?
 
 	private static final int CMD_NONE	= 0;
+	private static final int CMD_SEEK	= 1;
+	private static final int CMD_FORMAT	= 2;
 	
 	private static final int CMD_RESTORE	= 3;
 	private static final int CMD_READ	= 4;
+	private static final int CMD_VERIFY	= 5;	// verify CRC
 	private static final int CMD_WRITE	= 6;
+	private static final int CMD_WRDD	= 7;	// write deleted data mark
 
+	// error bits after 0b00 result type
 	private static final int RBYTE_DD = 0x01; // deleted data
 	private static final int RBYTE_CE = 0x02; // CRC error
 	private static final int RBYTE_SE = 0x04; // seek error
@@ -49,6 +65,12 @@ public class MDS_FDC extends RackUnit implements DiskController, PowerListener,
 	private static final int RBYTE_WP = 0x20; // write protect
 	private static final int RBYTE_WE = 0x40; // write error
 	private static final int RBYTE_NRDY = 0x80; // not ready
+
+	// ready bits after 0b10 result type
+	private static final int RBYTE_RDY1 = 0x80;
+	private static final int RBYTE_RDY0 = 0x40;
+	private static final int RBYTE_RDY3 = 0x20;
+	private static final int RBYTE_RDY2 = 0x10;
 
 	private Font tiny;
 
@@ -92,6 +114,7 @@ public class MDS_FDC extends RackUnit implements DiskController, PowerListener,
 	private int iopbAdr;
 	private int resType;
 	private int resByte;
+	private int resByte10; // if resType=0b10
 	private int fdcStat;
 
 	private int iopbOp;
@@ -284,7 +307,7 @@ public class MDS_FDC extends RackUnit implements DiskController, PowerListener,
 	}
 
 	// Main rack, controller and 2 drives
-	public MDS_FDC(Properties props, String label, int base, int irq, int lun,
+	public MDS_FDC(Properties props, String label, int base, int irq,
 					MDSMemory mem, Interruptor intr, MDS800 mds) {
 		// TODO: handle LUN...
 		super(4);	// 4U height
@@ -312,6 +335,37 @@ public class MDS_FDC extends RackUnit implements DiskController, PowerListener,
 		return file;
 	}
 
+	private void setReady(int x, boolean rdy) {
+		int res = 0;
+		int sts = 0;
+
+		switch (x) {
+		case 0:
+			sts = STS_RDY0;
+			res = RBYTE_RDY0;
+			break;
+		case 1:
+			sts = STS_RDY1;
+			res = RBYTE_RDY1;
+			break;
+		case 2:
+			sts = STS_RDY2;
+			res = RBYTE_RDY2;
+			break;
+		case 3:
+			sts = STS_RDY3;
+			res = RBYTE_RDY3;
+			break;
+		}
+		if (rdy) {
+			fdcStat |= sts;
+			resByte10 |= res;
+		} else {
+			fdcStat &= ~sts;
+			resByte10 &= ~res;
+		}
+	}
+
 	public void mouseClicked(MouseEvent e) {}
 	public void mouseEntered(MouseEvent e) {}
 	public void mouseExited(MouseEvent e) {}
@@ -335,7 +389,7 @@ public class MDS_FDC extends RackUnit implements DiskController, PowerListener,
 		File f = pickFile(String.format("Mount FD%d", x));
 		if (f == null) {
 			units[x].insertDisk(null);
-			fdcStat &= ~(1 << x);
+			setReady(x, false);
 			return;
 		}
 		Vector<String> args = new Vector<String>();
@@ -351,9 +405,7 @@ public class MDS_FDC extends RackUnit implements DiskController, PowerListener,
 	private void mountDisk(int x, File f, Vector<String> args) {
 		fds[x].setToolTipText(f.getName());
 		units[x].insertDisk(SectorFloppyImage.getDiskette(units[x], args));
-		if (units[x].isReady()) {
-			fdcStat |= (1 << x);
-		}
+		setReady(x, units[x].isReady());
 	}
 
 	// Conditions affecting interrupts have changed, ensure proper signal.
@@ -402,7 +454,7 @@ public class MDS_FDC extends RackUnit implements DiskController, PowerListener,
 			leds[u].set(true);
 			if (!curr.isReady()) {
 				selectErr = true;
-				cmdError(RBYTE_NRDY);
+				cmdErrNR();
 			}
 			if (curr.isWriteProtect()) {
 				protect = true;
@@ -415,9 +467,17 @@ public class MDS_FDC extends RackUnit implements DiskController, PowerListener,
 		}
 	}
 
+	private void cmdErrNR() {
+		error = true;
+		resType = 0b10;
+		fdcStat |= STS_DONE;
+		state = DONE;
+		active = false;
+	}
+
 	private void cmdError(int bits) {
 		error = true;
-		resType = 0b11;
+		resType = 0b00;
 		resByte |= bits;
 		fdcStat |= STS_DONE;
 		state = DONE;
@@ -521,17 +581,17 @@ public class MDS_FDC extends RackUnit implements DiskController, PowerListener,
 			(mem.read(iopbAdr + 6) << 8);
 		command = iopbCmd;
 		error = false;
-		if (iopbOp != 0x80) {
-			// what sort of error
-			cmdError(RBYTE_SE);
-			return;
-		}
+		// This appears to only affect setting of STS_DONE,
+		// unclear how to poll if DONE is never set.
+		// actual CPU interrupt is under control of host.
+		//if ((iopbOp & CH_INT) == 0) {
+		//}
 		int u = ((iopbCmd & MSK_UNIT) >> SHF_UNIT);
-		if (u == 3) u = 1;
+		if (u == 3) u = 1;	// CP/M quirk...
 		selectDrive(u);
 		if (curr == null || !curr.isReady()) {
 			selectErr = true;
-			cmdError(RBYTE_NRDY);
+			cmdErrNR();
 			return;
 		}
 
@@ -661,6 +721,7 @@ public class MDS_FDC extends RackUnit implements DiskController, PowerListener,
 		Arrays.fill(currTrack, -1);
 		intrEnable = false;
 		intr.lowerINT(irq, src);
+		fdcStat |= STS_CTRL;	// always present
 	}
 
 	public int getBaseAddress() { return basePort; }
@@ -679,11 +740,16 @@ public class MDS_FDC extends RackUnit implements DiskController, PowerListener,
 			// 00 = unlinked i/o complete, 01 = linked i/o complete (not used)
 			// 10 = disk status changed, 11 = (not used)
 			val = resType;
+			fdcStat &= ~STS_DONE;
 			break;
 		case 2:
 			break;
 		case 3:	// result byte
-			val = resByte;
+			if (resType == 0b10) {
+				val = resByte10;
+			} else {
+				val = resByte;
+			}
 			break;
 		}
 		return val;
@@ -713,8 +779,8 @@ public class MDS_FDC extends RackUnit implements DiskController, PowerListener,
 
 	public String dumpDebug() {
 		String ret = new String();
-		ret += String.format("FDC base %02x, sts = %02x, res1 = %02x, res2 = %02x\n",
-			basePort, fdcStat, resType, resByte);
+		ret += String.format("FDC base %02x sts=%02x rtyp=%02x rbyt=%02x %02x\n",
+			basePort, fdcStat, resType, resByte, resByte10);
 		ret += String.format("track %d, head = %d, sector %d, unit %d\n",
 			track, head, sector, unit);
 		ret += String.format("dataIdx %d IntrEnable=%s\n", dataIdx, intrEnable);
