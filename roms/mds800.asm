@@ -18,6 +18,8 @@ bootbuf	equ	3000h	; assume at least 16K
 dstat	equ	078h	; read - bit0: device present, bit2: ready
 diopbl	equ	079h	; write - iopb low
 diopch	equ	07ah	; write - iopb high
+drtype	equ	079h	; read - result type
+drbyte	equ	07bh	; read - result byte
 dreset	equ	07fh	; write - reset controller
 
 dcread	equ	4	; disk ctrl READ command
