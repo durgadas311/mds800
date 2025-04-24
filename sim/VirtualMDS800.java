@@ -44,7 +44,11 @@ public class VirtualMDS800 {
 		for (String arg : args) {
 			if (arg.indexOf("=") >= 0) {
 				String[] ss = arg.split("=", 2);
-				props.setProperty("mds800_" + ss[0], ss[1]);
+				if (ss[0].startsWith(".")) {
+					props.setProperty(ss[0].substring(1), ss[1]);
+				} else {
+					props.setProperty("mds800_" + ss[0], ss[1]);
+				}
 			}
 		}
 
