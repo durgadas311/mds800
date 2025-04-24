@@ -32,7 +32,7 @@ www: __FRC__
 VirtualMDS800.jar: all temp
 	echo "Main-Class: VirtualMDS800" >Manifest.txt
 	jar -cmf Manifest.txt VirtualMDS800.jar *.class \
-		icons/*.png *.rom -C temp .
+		icons/*.png *.rom docs/*.html -C temp .
 
 temp: __FRC__
 	mkdir -p temp
