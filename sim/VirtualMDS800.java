@@ -22,6 +22,9 @@ public class VirtualMDS800 {
 			rc = System.getProperty("user.home") + "/.mds800rc";
 		}
 		for (String arg : args) {
+			if (arg.indexOf("=") >= 0) {
+				continue;
+			}
 			File f = new File(arg);
 			if (f.exists()) {
 				rc = f.getAbsolutePath();
@@ -36,6 +39,13 @@ public class VirtualMDS800 {
 			props.setProperty("configuration", rc);
 		} catch(Exception ee) {
 			System.err.format("No config file\n");
+		}
+		// these must override any file
+		for (String arg : args) {
+			if (arg.indexOf("=") >= 0) {
+				String[] ss = arg.split("=", 2);
+				props.setProperty("mds800_" + ss[0], ss[1]);
+			}
 		}
 
 		front_end = new JFrame("Virtual MDS-800 Computer");
