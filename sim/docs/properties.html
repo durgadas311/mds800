@@ -82,9 +82,23 @@ It causes a new rack to be added to the basic MDS chassis.
 <DL>
 <DT>crt_att
 <DD>Specifies how to connect to the CRT serial port.
-Typical value is "TelnetSerial &lt;host-or-ip&gt; &lt;port&gt;" to use
-a telnet-like connection. This works for the H19telnet.jar
-and ASR33telnet.jar appliances.
+Values are:
+<DL>
+<DT>TelnetSerial <I>host-or-ip</I> <I>port</I>
+<DD>Telnet-like connection over TCP/IP sockets.
+This works for the H19telnet.jar and ASR33telnet.jar appliances,
+as well as telnet or other terminal programs that support telnet sockets.
+</DD>
+<DT>ASR33Serial <I>name</I>
+<DD>Direct-connected ASR33 appliance.
+This uses the same properties file as the MDS-800.
+</DD>
+<DT>H19Serial <I>name</I>
+<DD>Direct-connected H19 appliance.
+This uses the same properties file as the MDS-800.
+</DD>
+</DL>
+
 </DD>
 </DL>
 
@@ -93,11 +107,10 @@ and ASR33telnet.jar appliances.
 <DL>
 <DT>tty_att
 <DD>Specifies how to connect to the TTY serial port.
-Typical value is "TelnetSerial &lt;host-or-ip&gt; &lt;port&gt;" to use
-a telnet-like connection. This works for the H19telnet.jar
-and ASR33telnet.jar appliances.
+Takes the same options as crt_att.
+
 <P>In order to use the TTY paper tape reader (as implemented
-in the ASR33telnet.jar appliance), the "tty_rdr_adv_char" property
+in the ASR33 appliance), the "tty_rdr_adv_char" property
 must be specified for both the ASR33 appliance and the High Speed
 Paper Tape device, and both must use the same value.
 Default is 0x0f (Ctrl-O).
