@@ -17,7 +17,7 @@ ASR33telnet.jar: all
 
 # Need to exclude ASR33telnet.class...
 ASR33plugin.jar: all
-	jar -cMf $@ *.class doc
+	jar -cMf $@ ASR33*.class doc
 
 ship: jar
 	rsync -Wuv $(JARS) ../bin

@@ -26,7 +26,7 @@ public class ASR33Serial implements ASR33Container, SerialDevice {
 
 		front_end = new ASR33(props, this);
 		// hide, not close?
-		//front_end.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		front_end.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
 		// TODO: need hide/raise mechanics...
 
 		front_end.pack();
