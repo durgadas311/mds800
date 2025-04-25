@@ -1,5 +1,10 @@
+# This must build both plugin and standalone app.
+# would like to avoid having duplicates of classes
+# in ../sim, but standalone JAR needs them copied.
+# Perhaps 'jdeps' can help with this.
+CLASS_PATH = .:../sim
 
-JAVAS = ASR33.java ASR33telnet.java ASR33Serial.class
+JAVAS = ASR33.java ASR33telnet.java ASR33Serial.java
 CLASSES = $(subst .java,.class,$(JAVAS))
 JARS = ASR33telnet.jar ASR33plugin.jar
 
@@ -20,6 +25,6 @@ ASR33plugin.jar: all
 	jar -cMf $@ ASR33*.class doc
 
 ship: jar
-	rsync -Wuv $(JARS) ../bin
+	rsync -Wuv ASR33telnet.jar ../bin
 
 __FRC__:
