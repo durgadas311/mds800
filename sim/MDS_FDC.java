@@ -219,7 +219,7 @@ public class MDS_FDC extends RackUnit implements DiskController, PowerListener,
 		sectorLen = new int[4];
 		currTrack = new int[4];
 		prot = new JCheckBox("Protect");
-		timer = new javax.swing.Timer(500, this);
+		timer = new javax.swing.Timer(1000, this);
 		curBuf = new byte[128];
 		command = CMD_NONE;
 		name = "MDS_FDC";	// TODO: allow more than one?
@@ -376,7 +376,7 @@ public class MDS_FDC extends RackUnit implements DiskController, PowerListener,
 		if (e.getSource() == timer) {
 			timer.removeActionListener(this);
 			if (unit >= 0) {
-				//hld[unit].set(false);
+				leds[unit].set(false);
 			}
 			return;
 		}
@@ -435,12 +435,15 @@ public class MDS_FDC extends RackUnit implements DiskController, PowerListener,
 		chkIntr();
 	}
 
+	// Called at the start of a command.
+	// also in reset() w/-1 for power off.
 	private void selectDrive(int u) {
 		selectErr = false;
 		protect = false;
 		// TODO: is there such thing as "none"?
 		if (unit >= 0) {
 			leds[unit].set(false);
+			timer.removeActionListener(this);
 		}
 //		status &= ~bit(CRU_DRV_NRDY);
 //		status &= ~bit(CRU_WR_PROT);
@@ -452,6 +455,8 @@ public class MDS_FDC extends RackUnit implements DiskController, PowerListener,
 			unit = u;
 			curr = units[u];
 			leds[u].set(true);
+			timer.addActionListener(this);
+			timer.restart();
 			if (!curr.isReady()) {
 				selectErr = true;
 				cmdErrNR();
@@ -638,12 +643,13 @@ public class MDS_FDC extends RackUnit implements DiskController, PowerListener,
 		if (multi == 0) {
 			cmdComplete();
 		}
-		if (active) {
-			timer.removeActionListener(this);
-			timer.addActionListener(this);
-			timer.restart();
-			// hld[unit].set(true);
-		}
+// already done in selectDrive() ?
+//		if (active) {
+//			timer.removeActionListener(this);
+//			timer.addActionListener(this);
+//			timer.restart();
+//			leds[unit].set(true);
+//		}
 	}
 
 	private void doData() {
