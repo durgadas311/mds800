@@ -1,5 +1,12 @@
 *.class
 *.jar
-*.vMDS
 *.logdisk
+*.rc
+*.vMDS
 *.dmp
+*.txt
+*.log
+*.dbg
+temp
+!img/*.logdisk
+!cfg/*.rc
