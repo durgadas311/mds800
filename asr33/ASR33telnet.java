@@ -6,12 +6,12 @@ import java.io.*;
 import java.net.*;
 import java.util.Properties;
 
-public class ASR33telnet {
+public class ASR33telnet implements ASR33Container {
 	private static JFrame front_end;
 	private static Socket sok;
 	public OutputStream fout = null;
 	public InputStream fin = null;
-	public String title;
+	private String title;
 	private String host = null;
 	private int port = -1;
 
@@ -75,9 +75,15 @@ public class ASR33telnet {
 
 		front_end = new ASR33(props, this);
 
+		front_end.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		front_end.pack();
 		front_end.setVisible(true);
 	}
+
+	public String getTitle() { return title; }
+	public InputStream getInputStream() { return fin; }
+	public OutputStream getOutputStream() { return fout; }
+	public boolean hasConnection() { return true; }
 
 	public void disconnect() {
 		if (sok != null) {

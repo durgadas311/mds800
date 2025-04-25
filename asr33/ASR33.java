@@ -21,10 +21,12 @@ public class ASR33 extends JFrame
 	private static final int WRU = 0x05;	// ^E (ENQ)
 	private static final int RDR = 0x0f;	// ^O - new: advance reader once
 
+	static final String title = "Virtual ASR33 Teletype";
 	static final String[] sufx = { "txt" };
 	static final String[] sufd = { "Text" };
 
-	ASR33telnet fe;
+	ASR33Container fe;
+	boolean hasConn;
 	InputStream idev;
 	OutputStream odev;
 	JTextArea text;
@@ -155,11 +157,12 @@ public class ASR33 extends JFrame
 		}
 	};
 
-	public ASR33(Properties props, ASR33telnet fe) {
-		super("Virtual ASR33 Teletype - " + fe.title);
+	public ASR33(Properties props, ASR33Container fe) {
+		super(title + " - " + fe.getTitle());
 		this.fe = fe;
-		idev = fe.fin;
-		odev = fe.fout;
+		hasConn = fe.hasConnection();
+		idev = fe.getInputStream();
+		odev = fe.getOutputStream();
 		ansbak = new byte[20];
 		paste_delay = 100; // mS, 10 char/sec
 		paste_cr_delay = 1000; // mS, wait after CR
@@ -168,7 +171,6 @@ public class ASR33 extends JFrame
 		reader = new Reader();
 		_last = new File(System.getProperty("user.dir"));
 		getContentPane().setName("ASR33 Emulator");
-		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		getContentPane().setBackground(new Color(100, 100, 100));
 
 		String s = props.getProperty("asr33_ansbak");
@@ -224,9 +226,11 @@ public class ASR33 extends JFrame
 		mi = new JMenuItem("Tear Off", KeyEvent.VK_T);
 		mi.addActionListener(this);
 		mu.add(mi);
-		mi = new JMenuItem("Reconnect", KeyEvent.VK_X);
-		mi.addActionListener(this);
-		mu.add(mi);
+		if (hasConn) {
+			mi = new JMenuItem("Reconnect", KeyEvent.VK_X);
+			mi.addActionListener(this);
+			mu.add(mi);
+		}
 		mb.add(mu);
 		mu = new JMenu("PTape");
 		mi = new JMenuItem("Punch", KeyEvent.VK_P);
@@ -378,8 +382,8 @@ public class ASR33 extends JFrame
 			ctrlChar(c);
 			return;
 		}
-		// redundant, pdeneding on how we got here.
-		if (c >= '`' && c <= 0x7f) {
+		// redundant, depending on how we got here.
+		if (c >= '`' && c < 0x7f) {
 			c &= 0x5f;
 		}
 		if (c > 0x5f) {
@@ -421,8 +425,8 @@ public class ASR33 extends JFrame
 				printChar(c);
 			}
 		}
-		setTitle("Virtual ASR33 Teletype - lost connection");
-		fe.disconnect();
+		fe.disconnect(); // notify container of our predicament
+		setTitle(title + " - " + fe.getTitle());
 	}
 
 	protected void typeChar(int c) {
@@ -432,7 +436,7 @@ public class ASR33 extends JFrame
 			try {
 				odev.write((byte)c);
 			} catch (Exception ee) {
-				// TOD: anything?
+				// TODO: anything?
 			}
 		}
 	}
@@ -563,9 +567,9 @@ public class ASR33 extends JFrame
 			if (fe.reconnect() == 0) {
 				return;
 			}
-			idev = fe.fin;
-			odev = fe.fout;
-			setTitle("Virtual ASR33 Teletype - " + fe.title);
+			idev = fe.getInputStream();
+			odev = fe.getOutputStream();
+			setTitle(title + " - " + fe.getTitle());
 			if (idev != null) {
 				// need to avoid two or more threads running...
 				Thread t = new Thread(this);
