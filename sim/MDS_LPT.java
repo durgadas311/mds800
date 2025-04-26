@@ -11,7 +11,8 @@ import java.awt.datatransfer.Transferable;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.StringSelection;
 
-public class MDS_LPT extends JFrame implements IODevice, ActionListener, WindowListener {
+public class MDS_LPT extends JFrame implements IODevice, PeripheralContainer,
+			ActionListener {
 	private static final int STS_STATI = 0x02;
 	private static final int STS_NBUSY = 0x01; // active low...
 
@@ -71,6 +72,9 @@ public class MDS_LPT extends JFrame implements IODevice, ActionListener, WindowL
 		setVisible(false);
 	}
 
+	public JFrame getFrame() { return this; }
+	public String getName() { return "MDS_LPT"; }
+
 	public void reset() {}
 	public int getBaseAddress() { return basePort; }
 	public int getNumPorts() { return 2; }
@@ -104,7 +108,8 @@ public class MDS_LPT extends JFrame implements IODevice, ActionListener, WindowL
 	public String getDeviceName() { return "MDS_LPT"; }
 
 	public String dumpDebug() {
-		String ret = String.format("MDS LPT port %02x\n", basePort);
+		String ret = String.format("MDS LPT port %02x visible=%s\n",
+			basePort, visible);
 		return ret;
 	}
 
@@ -192,16 +197,6 @@ public class MDS_LPT extends JFrame implements IODevice, ActionListener, WindowL
 			tearOff();
 			return;
 		}
-	}
-
-	public void windowActivated(WindowEvent e) { }
-	public void windowClosed(WindowEvent e) { }
-	public void windowIconified(WindowEvent e) { }
-	public void windowOpened(WindowEvent e) { }
-	public void windowDeiconified(WindowEvent e) { }
-	public void windowDeactivated(WindowEvent e) { }
-	public void windowClosing(WindowEvent e) {
-		setVisible(false);
 	}
 
 	@Override

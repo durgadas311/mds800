@@ -5,8 +5,9 @@ import java.util.Vector;
 import java.util.Properties;
 import java.io.*;
 import java.lang.reflect.Constructor;
+import javax.swing.JFrame;
 
-public class INS8251 implements IODevice, VirtualUART {
+public class INS8251 implements IODevice, VirtualUART, PeripheralContainer {
 	static final int fifoLimit = 10; // should never even exceed 2
 	private Interruptor intr;
 	private int irq;
@@ -45,6 +46,7 @@ public class INS8251 implements IODevice, VirtualUART {
 	private static final int MCR_HNT = 0x80;
 
 	private Object attObj;
+	private PeripheralContainer attPC;
 	private OutputStream attFile;
 	private InputStream attInFile;
 	private SerialDevice io;
@@ -158,6 +160,9 @@ public class INS8251 implements IODevice, VirtualUART {
 					props,
 					argv,
 					(VirtualUART)this);
+			if (attObj instanceof PeripheralContainer) {
+				attPC = (PeripheralContainer)attObj;
+			}
 		} catch (Exception ee) {
 			System.err.format("Invalid class in attachment: %s\n", s);
 			return;
@@ -168,6 +173,20 @@ public class INS8251 implements IODevice, VirtualUART {
 		this.io = io;
 		io_in = (io != null && (io.dir() & SerialDevice.DIR_IN) != 0);
 		io_out = (io != null && (io.dir() & SerialDevice.DIR_OUT) != 0);
+	}
+
+	public JFrame getFrame() {
+		if (attPC != null) {
+			return attPC.getFrame();
+		}
+		return null;
+	}
+
+	public String getName() {
+		if (attPC != null) {
+			return attPC.getName();
+		}
+		return null;
 	}
 
 	// Conditions affecting interrupts have changed, ensure proper signal.

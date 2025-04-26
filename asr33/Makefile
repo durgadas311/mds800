@@ -11,7 +11,7 @@ JARS = ASR33telnet.jar ASR33plugin.jar
 all: $(CLASSES)
 
 %.class: %.java
-	javac $?
+	javac -cp $(CLASS_PATH) $?
 
 jar: $(JARS)
 

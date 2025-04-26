@@ -6,28 +6,31 @@ import java.io.*;
 import java.util.Properties;
 import java.util.Vector;
 
-public class ASR33Serial implements ASR33Container, SerialDevice {
+public class ASR33Serial implements ASR33Container, PeripheralContainer, SerialDevice {
 	private JFrame front_end;
 	private java.util.concurrent.LinkedBlockingDeque<Integer> fifo;
 	private boolean running;
 	private String title;
+	private String name;
 	private InputStream fin;
 	private OutputStream fout;
 
+	static int index = 1;
+
 	public ASR33Serial(Properties props, Vector<String> argv, VirtualUART uart) {
-		String name = "?";
+		String nm;
 		if (argv.size() > 1) {
-			name = argv.get(1);
+			nm = argv.get(1);
+		} else {
+			nm = String.format("%d", index++);
 		}
-		title = name;
+		title = nm;
+		name = "ASR33_" + nm.toUpperCase();
 		fifo = new java.util.concurrent.LinkedBlockingDeque<Integer>();
 		fin = new ASR33SerialInputStream(uart);
 		fout = new ASR33SerialOutputStream(uart);
 
 		front_end = new ASR33(props, this);
-		// hide, not close?
-		front_end.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
-		// TODO: need hide/raise mechanics...
 
 		front_end.pack();
 		front_end.setVisible(true);
@@ -37,6 +40,9 @@ public class ASR33Serial implements ASR33Container, SerialDevice {
 				VirtualUART.SET_DSR |
 				VirtualUART.SET_DCD);
 	}
+
+	public JFrame getFrame() { return front_end; }
+	public String getName() { return name; }
 
 	public String getTitle() { return title; }
 	public InputStream getInputStream() { return fin; }

@@ -6,24 +6,29 @@ import java.io.*;
 import java.util.Properties;
 import java.util.Vector;
 
-public class H19Serial implements SerialDevice, Runnable {
+public class H19Serial implements PeripheralContainer, SerialDevice, Runnable {
 	private JFrame front_end;
 	private H19Terminal term;
 	private java.util.concurrent.LinkedBlockingDeque<Integer> fifo;
 	private boolean running;
+	private String name;
+
+	static int index = 1;
 
 	public H19Serial(Properties props, Vector<String> argv, VirtualUART uart) {
-		String name = "?";
+		String nm;
 		if (argv.size() > 1) {
-			name = argv.get(1);
+			nm = argv.get(1);
+		} else {
+			nm = String.format("%d", index++);
 		}
+		name = "H19_" + nm.toUpperCase();
 		fifo = new java.util.concurrent.LinkedBlockingDeque<Integer>();
 		CrtScreen screen = new CrtScreen(props);
 		String title = String.format("Virtual H19 Terminal - %s", name);
 
 		front_end = new JFrame(title);
 		front_end.getContentPane().setName("H19 Emulator");
-		front_end.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
 		front_end.getContentPane().setBackground(new Color(100, 100, 100));
 		// This allows TAB to be sent
 		front_end.setFocusTraversalKeysEnabled(false);
@@ -55,6 +60,9 @@ public class H19Serial implements SerialDevice, Runnable {
 		Thread t = new Thread(this);
 		t.start();
 	}
+
+	public JFrame getFrame() { return front_end; }
+	public String getName() { return name; }
 
 	// SerialDevice interface
 	public void write(int b) {

@@ -21,7 +21,7 @@ public class MDS800 implements MDS800Commander, Computer, Runnable {
 	private Vector<IODevice> devs;
 	private Vector<DiskController> dsks;
 	private Vector<InterruptController> intrs;
-	private Vector<JFrame> frames;
+	private Vector<PeripheralContainer> frames;
 	private MDSMemory mem;
 	private boolean running;
 	private boolean stopped;
@@ -64,7 +64,7 @@ public class MDS800 implements MDS800Commander, Computer, Runnable {
 		times = new Vector<TimeListener>();
 		pwrs = new Vector<PowerListener>();
 		intrs = new Vector<InterruptController>();
-		frames = new Vector<JFrame>();
+		frames = new Vector<PeripheralContainer>();
 		// Do this early, so we can log messages appropriately.
 		s = props.getProperty("mds800_log");
 		if (s != null) {
@@ -96,13 +96,15 @@ public class MDS800 implements MDS800Commander, Computer, Runnable {
 		// TODO: InterruptController...
 		INS8251 tty = new INS8251(props, "tty", 0xf4, 3, fp);
 		addDevice(tty);
+		addFrame(tty); // may not have a frame
 		INS8251 crt = new INS8251(props, "crt", 0xf6, 3, fp);
 		addDevice(crt);
+		addFrame(crt); // may not have a frame
 
 		// FP must share I/O intr status port with LPT...
 		MDS_LPT lpt = new MDS_LPT(props, 0xfa, fp);
 		addDevice(lpt);
-		frames.add(lpt);
+		addFrame(lpt);
 
 		s = props.getProperty("mds800_fdc");
 		if (s != null && s.equalsIgnoreCase("yes")) {
@@ -177,7 +179,13 @@ public class MDS800 implements MDS800Commander, Computer, Runnable {
 		return dsks;
 	}
 
-	public Vector<JFrame> getFrames() {
+	private void addFrame(PeripheralContainer pc) {
+		if (pc.getFrame() != null) {
+			frames.add(pc);
+		}
+	}
+
+	public Vector<PeripheralContainer> getFrames() {
 		return frames;
 	}
 

@@ -261,16 +261,15 @@ public class MDS800Operator implements ActionListener, ResetListener, Runnable
 		refreshDisks();
 	}
 
-	public void addFrames(Vector<JFrame> frames) {
+	public void addFrames(Vector<PeripheralContainer> frames) {
 		// add menu items to set visibility...
 		// use class name???
-		for (JFrame frm : frames) {
-//System.err.format("adding %s\n", frm.getClass().getName());
+		for (PeripheralContainer pc : frames) {
 			int iokey = _key++;
-			JMenuItem mi = new JMenuItem(frm.getClass().getName(), iokey);
+			JMenuItem mi = new JMenuItem(pc.getName(), iokey);
 			mi.addActionListener(this);
 			_io_mu.add(mi);
-			_ios.put(iokey, frm);
+			_ios.put(iokey, pc.getFrame());
 		}
 	}
 

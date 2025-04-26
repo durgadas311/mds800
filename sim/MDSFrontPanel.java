@@ -49,6 +49,7 @@ public class MDSFrontPanel implements IODevice, InterruptController, Interruptor
 	int priMask;
 	private int[] intRegistry;
 	private int[] intLines;
+	boolean pwrOn;
 	private boolean i8259_init;
 	private int i8259_page;	// not used - always do RST x
 	private int i8259_adi;		// assumed to be 8
@@ -538,6 +539,7 @@ public class MDSFrontPanel implements IODevice, InterruptController, Interruptor
 	}
 
 	public void setPower(boolean on) {
+		pwrOn = on;
 		pwr.set(on);
 		sys.setPower(on);
 	}
@@ -553,10 +555,6 @@ public class MDSFrontPanel implements IODevice, InterruptController, Interruptor
 	public void update() {
 		run.set(sys.isRunning());
 		hlt.set(sys.isHalted());
-	}
-
-	public void run() {
-		sys.sendCommand("reset");
 	}
 
 	public boolean bootOn() {
@@ -610,14 +608,18 @@ public class MDSFrontPanel implements IODevice, InterruptController, Interruptor
 			return;
 		}
 		if (act < 8) {
-			doIntSw(act);
+			if (pwrOn) {
+				doIntSw(act);
+			}
 			return;
 		}
 		switch (act) {
 		case BOOT:
 			break;
 		case RESET:
-			sys.reset();
+			if (pwrOn) {
+				sys.reset();
+			}
 			break;
 		case PWR:
 			setPower(key.isSelected());
