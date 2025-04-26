@@ -74,9 +74,14 @@ public class PaperTapePositioner extends JFrame
 		}
 	}
 
-	public PaperTapePositioner(WindowListener lstr, RandomAccessFile tape, int zone) {
+	public PaperTapePositioner(WindowListener lstr, RandomAccessFile tape, int zone,
+				Component friend) {
 		super("PTR");
 		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE); // ...or live view?
+		setLocationByPlatform(true);
+		if (friend != null) {
+			setLocationRelativeTo(friend);
+		}
 		addWindowListener(this);
 		addWindowListener(lstr);
 		// TODO: allow save/cancel?
@@ -149,7 +154,7 @@ public class PaperTapePositioner extends JFrame
 			return;
 		}
 		if (_idx < 0) _idx = 0;
-		if (_idx >= tot) _idx = tot - 1;
+		if (_idx > tot) _idx = tot;
 		cacheTape(_idx);
 	}
 	public void keyReleased(KeyEvent e) { }
@@ -158,7 +163,7 @@ public class PaperTapePositioner extends JFrame
 		int clicks = e.getWheelRotation();
 		int _idx = idx;
 		_idx += clicks;
-		if (_idx >= tot) _idx = tot - 1;
+		if (_idx >= tot) _idx = tot;
 		if (_idx < 0) _idx = 0;
 		cacheTape(_idx);
 	}

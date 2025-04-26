@@ -25,11 +25,12 @@ public class H19Serial implements PeripheralContainer, SerialDevice, Runnable {
 		name = "H19_" + nm.toUpperCase();
 		fifo = new java.util.concurrent.LinkedBlockingDeque<Integer>();
 		CrtScreen screen = new CrtScreen(props);
-		String title = String.format("Virtual H19 Terminal - %s", name);
+		String title = String.format("Virtual H19 Terminal - %s", nm);
 
 		front_end = new JFrame(title);
 		front_end.getContentPane().setName("H19 Emulator");
 		front_end.getContentPane().setBackground(new Color(100, 100, 100));
+		front_end.setLocationByPlatform(true);
 		// This allows TAB to be sent
 		front_end.setFocusTraversalKeysEnabled(false);
 		String s = props.getProperty("h19_nameplate");
@@ -52,7 +53,7 @@ public class H19Serial implements PeripheralContainer, SerialDevice, Runnable {
 		screen.setPasteListener(kbd);
 		term = new H19Terminal(props, screen, kbd, new H19SerialInputStream(uart));
 		front_end.pack();
-		front_end.setVisible(true);
+		//front_end.setVisible(true);
 		uart.attachDevice(this);
 		uart.setModem(VirtualUART.SET_CTS |
 				VirtualUART.SET_DSR |

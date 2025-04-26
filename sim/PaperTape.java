@@ -342,7 +342,7 @@ public class PaperTape extends RackUnit implements IODevice,
 				return;
 			}
 			reader.busy = true;
-			JFrame jf = new PaperTapePositioner(this, reader.in, rdr_view);
+			JFrame jf = new PaperTapePositioner(this, reader.in, rdr_view, this);
 			return;
 		}
 		fd.setToolTipText("(none)");

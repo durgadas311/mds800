@@ -33,7 +33,7 @@ public class ASR33Serial implements ASR33Container, PeripheralContainer, SerialD
 		front_end = new ASR33(props, this);
 
 		front_end.pack();
-		front_end.setVisible(true);
+		//front_end.setVisible(true);
 
 		uart.attachDevice(this);
 		uart.setModem(VirtualUART.SET_CTS |

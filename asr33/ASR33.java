@@ -644,7 +644,7 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 			rdrStop(); // just in case
 			rdr.setSelected(false);
 			rdr_start.setEnabled(false);
-			JFrame jf = new PaperTapePositioner(this, rdr_in, 8);
+			JFrame jf = new PaperTapePositioner(this, rdr_in, 8, this);
 			// cannot use reader until this finishes...
 			rdr_busy = true;
 		}
