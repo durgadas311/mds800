@@ -31,6 +31,7 @@ on the drum being left as NUL characters.
 <DT>asr33_delay
 <DD>The delay inserted after each character is pasted or otherwise
 automatically sent to the host, in milliseconds. Default is 100.
+</DD>
 
 <DT>asr33_rdr_adv_char<BR>
 tty_rdr_adv_char
@@ -40,6 +41,12 @@ This emulates the Teletype feature of a solenoid on the reader
 that is activated by a handshake signal on the host interface.
 This needs to match whatever is used on the host (e.g. MDS-800)
 to trigger the reader advance. Default is 0x0f (Ctrl-O).
+</DD>
+
+<DT>asr33_rdr_view
+<DD>The number of characters before and after the current in
+the reader tape positioning view. Default is 8.
+Must be between 1 and 30.
 </DD>
 </DL>
 

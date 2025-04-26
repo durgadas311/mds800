@@ -5,6 +5,7 @@ JAVAS = $(wildcard *.java)
 CLASSES = $(subst .java,.class,$(JAVAS))
 JARS = VirtualMDS800.jar
 SHIPS = $(SOURCE) $(JARS)
+DOCS = $(wildcard doc/*.html)
 
 all: z80cpu/z80core.jar $(CLASSES)
 
@@ -19,7 +20,7 @@ build: jar src
 ship: jar
 	rsync -Wuv $(JARS) ../bin
 
-VirtualMDS800.jar: all temp
+VirtualMDS800.jar: all $(DOCS) temp
 	echo "Main-Class: VirtualMDS800" >Manifest.txt
 	jar -cmf Manifest.txt VirtualMDS800.jar *.class \
 		icons/*.png *.rom docs/*.html -C temp .

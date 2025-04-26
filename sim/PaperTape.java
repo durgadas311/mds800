@@ -9,8 +9,9 @@ import java.io.*;
 import javax.swing.*;
 import javax.swing.border.*;
 
+// MDS High Speed Paper Tape
 public class PaperTape extends RackUnit implements IODevice,
-				ActionListener {
+				WindowListener, ActionListener {
 	// by mutual agreement with any TTY-attached peripheral
 	private static final int RDR = 0x0f;	// ^O - new: advance reader once
 
@@ -40,6 +41,7 @@ public class PaperTape extends RackUnit implements IODevice,
 	private boolean ptrRdy;
 	private boolean ptpRdy;
 	private int tty_rdr_adv_char;
+	private int rdr_view;
 
 	private ReaderDevice reader;
 	private PunchDevice punch;
@@ -54,6 +56,7 @@ public class PaperTape extends RackUnit implements IODevice,
 	abstract class DeviceButton extends JLabel implements MouseListener {
 		int id;
 		ActionListener lstr;
+		ActionListener plstr; // re-positioning listener (if any)
 
 		public DeviceButton(String name, int id, ActionListener lstr) {
 			super(name);
@@ -67,6 +70,10 @@ public class PaperTape extends RackUnit implements IODevice,
 			setBorder(BorderFactory.createBevelBorder(BevelBorder.RAISED,
 				normHi, normHi, normLo, normLo));
 			addMouseListener(this);
+		}
+
+		public void setPositioningListener(ActionListener lstr) {
+			plstr = lstr;
 		}
 
 		public int getId() { return id; }
@@ -86,15 +93,24 @@ public class PaperTape extends RackUnit implements IODevice,
 			}
 		}
 		public void mouseClicked(MouseEvent e) {
-			if (lstr != null) {
-				lstr.actionPerformed(new ActionEvent(this, e.getID(), "fd"));
+			if (e.getButton() == MouseEvent.BUTTON1) {
+				if (lstr != null) {
+					lstr.actionPerformed(new ActionEvent(this,
+						e.getID(), "pt"));
+				}
+			} else if (e.getButton() == MouseEvent.BUTTON3) {
+				if (plstr != null) {
+					plstr.actionPerformed(new ActionEvent(this,
+						e.getID(), "ptp"));
+				}
 			}
 		}
 	}
 
 	class ReaderDevice extends DeviceButton {
 		public File file;
-		public InputStream in;
+		public RandomAccessFile in;
+		public boolean busy;
 
 		public ReaderDevice(String name, int id, ActionListener lstr) {
 			super(name, id, lstr);
@@ -110,7 +126,7 @@ public class PaperTape extends RackUnit implements IODevice,
 			}
 			setToolTipText(file.getName());
 			try {
-				in = new FileInputStream(file);
+				in = new RandomAccessFile(file, "r");
 			} catch (Exception e) { }
 		}
 	}
@@ -151,6 +167,7 @@ public class PaperTape extends RackUnit implements IODevice,
 		last = new File(System.getProperty("user.dir"));
 		basePort = base;
 		reader = new ReaderDevice("READER", 1, this);
+		reader.setPositioningListener(this);
 		punch = new PunchDevice("PUNCH", 2, this);
 		String s;
 		s = props.getProperty("ptp_att");
@@ -167,6 +184,13 @@ public class PaperTape extends RackUnit implements IODevice,
 		}
 		if (s != null) {
 			tty_rdr_adv_char = Integer.decode(s) & 0xff;
+		}
+		rdr_view = 8;
+		s = props.getProperty("ptp_rdr_view");
+		if (s != null) {
+			rdr_view = Integer.valueOf(s);
+			if (rdr_view < 1) rdr_view = 1;
+			if (rdr_view > 30) rdr_view = 30; // what is practical...
 		}
 		GridBagLayout gb = new GridBagLayout();
 		setLayout(gb);
@@ -203,7 +227,7 @@ public class PaperTape extends RackUnit implements IODevice,
 
 	private int getStatus() {
 		int val = 0;
-		if (reader.in != null) {	// file ready to read
+		if (reader.in != null && !reader.busy) { // file ready to read
 			val |= STS_PTR_RDY;
 		}
 		if (punch.out != null) {	// file ready to punch
@@ -252,10 +276,12 @@ public class PaperTape extends RackUnit implements IODevice,
 				// TODO: handle direction?
 				ptrRdy = false;
 				try {
-					if (reader.in != null &&
-							reader.in.available() > 0) {
-						ptrChar = reader.in.read();
-						ptrRdy = true; // instantly ready
+					if (reader.in != null && !reader.busy) {
+						int c = reader.in.read();
+						if (c >= 0) {
+							ptrChar = c;
+							ptrRdy = true; // instantly ready
+						}
 					}
 				} catch (Exception e) {}
 			}
@@ -310,6 +336,15 @@ public class PaperTape extends RackUnit implements IODevice,
 
 	public void actionPerformed(ActionEvent e) {
 		DeviceButton fd = (DeviceButton)e.getSource();
+		String act = e.getActionCommand();
+		if (act.equals("ptp")) {
+			if (reader.in == null) {
+				return;
+			}
+			reader.busy = true;
+			JFrame jf = new PaperTapePositioner(this, reader.in, rdr_view);
+			return;
+		}
 		fd.setToolTipText("(none)");
 		File f = pickFile("Mount Paper Tape");
 		if (f == null) {
@@ -322,5 +357,15 @@ public class PaperTape extends RackUnit implements IODevice,
 			return;
 		}
 		fd.setFile(f);
+	}
+
+	public void windowActivated(WindowEvent e) { }
+	public void windowClosed(WindowEvent e) { }
+	public void windowIconified(WindowEvent e) { }
+	public void windowOpened(WindowEvent e) { }
+	public void windowDeiconified(WindowEvent e) { }
+	public void windowDeactivated(WindowEvent e) { }
+	public void windowClosing(WindowEvent e) {
+		reader.busy = false;
 	}
 }

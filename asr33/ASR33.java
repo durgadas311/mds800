@@ -11,8 +11,8 @@ import java.awt.datatransfer.Transferable;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.StringSelection;
 
-public class ASR33 extends JFrame
-		implements KeyListener, MouseListener, ActionListener, Runnable {
+public class ASR33 extends JFrame implements KeyListener, MouseListener,
+			ActionListener, WindowListener, Runnable {
 	private static final int BEL = 0x07;
 	private static final int DC1 = 0x11;	// ^Q - XON
 	private static final int DC2 = 0x12;	// ^R - P-ON
@@ -24,6 +24,7 @@ public class ASR33 extends JFrame
 	static final String title = "Virtual ASR33 Teletype";
 	static final String[] sufx = { "txt" };
 	static final String[] sufd = { "Text" };
+	static final Color lighted = new Color(255, 255, 200);
 
 	ASR33Container fe;
 	boolean hasConn;
@@ -41,14 +42,16 @@ public class ASR33 extends JFrame
 	JCheckBox pun;
 	JCheckBox rdr;
 	JButton rdr_start;
+	boolean rdr_busy;
 	JMenuItem pun_mi;
 	JMenuItem rdr_mi;
 	OutputStream pun_out;
-	InputStream rdr_in;
+	RandomAccessFile rdr_in;
 
 	byte[] ansbak;
 	int paste_delay;
 	int paste_cr_delay;
+	int rdr_view;
 	Reader reader;
 	Paster paster;
 	int rdr_adv_char;
@@ -192,6 +195,13 @@ public class ASR33 extends JFrame
 		if (s != null) {
 			rdr_adv_char = Integer.decode(s) & 0xff;
 		}
+		rdr_view = 8;
+		s = props.getProperty("asr33_rdr_view");
+		if (s != null) {
+			rdr_view = Integer.valueOf(s);
+			if (rdr_view < 1) rdr_view = 1;
+			if (rdr_view > 30) rdr_view = 30; // what is practical...
+		}
 
 		java.net.URL url;
 		url = this.getClass().getResource("doc/help.html");
@@ -239,6 +249,9 @@ public class ASR33 extends JFrame
 		mu.add(mi);
 		mi = new JMenuItem("Reader", KeyEvent.VK_R);
 		rdr_mi = mi;
+		mi.addActionListener(this);
+		mu.add(mi);
+		mi = new JMenuItem("Rdr Position", KeyEvent.VK_Z);
 		mi.addActionListener(this);
 		mu.add(mi);
 		mb.add(mu);
@@ -308,7 +321,7 @@ public class ASR33 extends JFrame
 	}
 
 	private void rdrStart() {
-		rdr_start.setBackground(Color.yellow);
+		rdr_start.setBackground(lighted);
 		reader.start();
 	}
 
@@ -525,6 +538,10 @@ public class ASR33 extends JFrame
 		}
 		if (e.getSource() instanceof JCheckBox) {
 			if (e.getSource() == rdr) {
+				if (rdr_busy) {
+					rdr.setSelected(false);
+					return;
+				}
 				if (!rdr.isSelected()) {
 					rdrStop();
 				}
@@ -612,7 +629,7 @@ public class ASR33 extends JFrame
 				return;
 			}
 			try {
-				rdr_in = new FileInputStream(file);
+				rdr_in = new RandomAccessFile(file, "r");
 				rdr_mi.setText("Reader - " + file.getName());
 				rdr.setEnabled(true);
 			} catch (Exception ee) {
@@ -620,11 +637,33 @@ public class ASR33 extends JFrame
 			}
 			return;
 		}
+		if (m.getMnemonic() == KeyEvent.VK_Z) {
+			if (rdr_in == null) {
+				return;
+			}
+			rdrStop(); // just in case
+			rdr.setSelected(false);
+			rdr_start.setEnabled(false);
+			JFrame jf = new PaperTapePositioner(this, rdr_in, 8);
+			// cannot use reader until this finishes...
+			rdr_busy = true;
+		}
 		if (m.getMnemonic() == KeyEvent.VK_H) {
 			if (_help != null) {
 				_help.setVisible(true);
 			}
 			return;
 		}
+	}
+
+	public void windowActivated(WindowEvent e) { }
+	public void windowClosed(WindowEvent e) { }
+	public void windowIconified(WindowEvent e) { }
+	public void windowOpened(WindowEvent e) { }
+	public void windowDeiconified(WindowEvent e) { }
+	public void windowDeactivated(WindowEvent e) { }
+	public void windowClosing(WindowEvent e) {
+		// rdr_in has new position set
+		rdr_busy = false;
 	}
 }

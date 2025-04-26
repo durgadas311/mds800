@@ -21,7 +21,6 @@ Editing (backspacing) is not supported.
 <P>The menu item PTape->Reader selects a file to use for the paper tape reader.
 In order to re-wind a file, re-select it from this menu.
 Clicking "Cancel" leaves no file selected (reader not operational).
-Positioning to a specific location is not supported.
 
 <P>LOCAL checkbox selects between LOCAL (checked) or LINE (unchecked)
 mode of operation. In LOCAL mode all characters from the remote
@@ -46,6 +45,14 @@ That character may be changed with the "rdr_adv_char" property.
 button may be used to start reading tape and sending to the remote.
 Whenever the reader is active, the "start" button will be
 illuminated.
+
+<P>The menu item PTape->Rdr_Position will pop-up with window
+allowing positioning of the paper tape in the reader.
+The reader is disabled during this operation.
+The keys UP, DOWN, PAGE_UP, and PAGE_DOWN, along with the
+mouse wheel, will reposition the tape.
+HOME jumps to the beginning, and END jumps to the end.
+Press ENTER or Close the window to set the new position and release the reader.
 
 <H3>Keyboard</H3>
 
