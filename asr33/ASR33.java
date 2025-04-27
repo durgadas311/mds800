@@ -7,6 +7,7 @@ import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
 import javax.swing.text.*;
+import javax.swing.border.*;
 import java.awt.datatransfer.Transferable;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.StringSelection;
@@ -40,13 +41,20 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 
 	JCheckBox local;
 	JCheckBox pun;
+	JLabel pun_cnt;
+	int pun_bytes;
 	JCheckBox rdr;
 	JButton rdr_start;
 	boolean rdr_busy;
+	JLabel rdr_cnt;
+	int rdr_bytes;
 	JMenuItem pun_mi;
 	JMenuItem rdr_mi;
 	OutputStream pun_out;
 	RandomAccessFile rdr_in;
+	JLabel spinner;
+	int spinning;
+	static final String[] spins = new String[]{ "/", "\u2013", "\\", "|" };
 
 	byte[] ansbak;
 	int paste_delay;
@@ -152,6 +160,7 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 					rdrStop();
 					continue;
 				}
+				rdr_cnt.setText(String.format("%4d", ++rdr_bytes));
 				typeChar(c);
 				try {
 					Thread.sleep(paste_delay);
@@ -208,7 +217,7 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 		_help = new GenericHelp("ASR33 Teletype Help", url);
 
 		setLayout(new BorderLayout()); // allow resizing
-		text = new JTextArea(24, 80);
+		text = new JTextArea(24, 81); // a little wider for breathing room
 		text.setEditable(false); // this prevents caret... grrr.
 		text.setBackground(Color.white);
 		Font font = new Font("Monospaced", Font.PLAIN, 12);
@@ -256,37 +265,63 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 		mu.add(mi);
 		mb.add(mu);
 
-		//String s = props.getProperty("console"); // TODO...
 		JPanel pn = new JPanel();
-		pn.setPreferredSize(new Dimension(10, 30));
+		pn.setPreferredSize(new Dimension(5, 30));
+		pn.setOpaque(false);
+		mb.add(pn);
+		spinner = new JLabel(spins[0]);
+		spinner.setFont(font);
+		spinner.setBorder(BorderFactory.createBevelBorder(BevelBorder.LOWERED));
+		spinning = 0;
+		mb.add(spinner);
+
+		pn = new JPanel();
+		pn.setPreferredSize(new Dimension(5, 30));
+		pn.setOpaque(false);
 		mb.add(pn);
 		local = new JCheckBox("LOCAL");
 		local.setFocusable(false);
 		//local.addActionListener(this);
+		local.setOpaque(false);
 		mb.add(local);
 		pn = new JPanel();
 		pn.setPreferredSize(new Dimension(10, 30));
+		pn.setOpaque(false);
 		mb.add(pn);
 		pun = new JCheckBox("PUNCH");
 		pun.setFocusable(false);
 		//pun.addActionListener(this);
 		pun.setEnabled(false);
+		pun.setOpaque(false);
 		mb.add(pun);
+		pun_cnt = new JLabel("    ");
+		pun_cnt.setFont(font);
+		pun_cnt.setBorder(BorderFactory.createBevelBorder(BevelBorder.LOWERED));
+		mb.add(pun_cnt);
 		pn = new JPanel();
 		pn.setPreferredSize(new Dimension(10, 30));
+		pn.setOpaque(false);
 		mb.add(pn);
 		rdr = new JCheckBox("READER");
 		rdr.setFocusable(false);
 		rdr.addActionListener(this);
 		rdr.setEnabled(false);
+		rdr.setOpaque(false);
 		mb.add(rdr);
 		rdr_start = new JButton("start");
 		rdr_start.setFocusable(false);
 		rdr_start.addActionListener(this);
 		rdr_start.setEnabled(false);
+		rdr_start.setOpaque(false);
 		mb.add(rdr_start);
+		rdr_cnt = new JLabel("    ");
+		rdr_cnt.setFont(font);
+		rdr_cnt.setBorder(BorderFactory.createBevelBorder(BevelBorder.LOWERED));
+		mb.add(rdr_cnt);
+
 		pn = new JPanel();
 		pn.setPreferredSize(new Dimension(10, 30));
+		pn.setOpaque(false);
 		mb.add(pn);
 
 		mu = new JMenu("Help");
@@ -334,6 +369,7 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 		if (pun_out != null && pun.isSelected()) {
 			try {
 				pun_out.write(c);
+				pun_cnt.setText(String.format("%4d", ++pun_bytes));
 			} catch (Exception ee) {}
 		}
 	}
@@ -345,6 +381,7 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 				try {
 					int rc = rdr_in.read();
 					if (rc >= 0) {
+						rdr_cnt.setText(String.format("%4d", ++rdr_bytes));
 						typeChar(rc);
 					}
 				} catch (Exception ee) {}
@@ -443,6 +480,8 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 	}
 
 	protected void typeChar(int c) {
+		++spinning;
+		spinner.setText(spins[spinning & 3]);
 		if (local.isSelected()) {
 			printChar(c);
 		} else {
@@ -598,6 +637,8 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 			if (pun_out != null) try {
 				pun_out.close();
 			} catch (Exception ee) {}
+			pun_cnt.setText("    ");
+			pun_bytes = 0;
 			pun_mi.setText("Punch");
 			pun_out = null;
 			pun.setSelected(false);
@@ -610,6 +651,8 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 				pun_out = new FileOutputStream(file);
 				pun_mi.setText("Punch - " + file.getName());
 				pun.setEnabled(true);
+				pun_cnt.setText("   0");
+				pun_bytes = 0;
 			} catch (Exception ee) {
 				System.err.println(ee.getMessage());
 			}
@@ -619,6 +662,8 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 			if (rdr_in != null) try {
 				rdr_in.close();
 			} catch (Exception ee) {}
+			rdr_cnt.setText("    ");
+			rdr_bytes = 0;
 			rdr_mi.setText("Reader");
 			rdr_in = null;
 			rdr.setSelected(false);
@@ -632,6 +677,8 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 				rdr_in = new RandomAccessFile(file, "r");
 				rdr_mi.setText("Reader - " + file.getName());
 				rdr.setEnabled(true);
+				rdr_cnt.setText("   0");
+				rdr_bytes = 0;
 			} catch (Exception ee) {
 				System.err.println(ee.getMessage());
 			}
@@ -664,6 +711,10 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 	public void windowDeactivated(WindowEvent e) { }
 	public void windowClosing(WindowEvent e) {
 		// rdr_in has new position set
+		try {
+			rdr_bytes = (int)rdr_in.getFilePointer();
+		} catch (Exception ee) {}
+		rdr_cnt.setText(String.format("%4d", rdr_bytes));
 		rdr_busy = false;
 	}
 }

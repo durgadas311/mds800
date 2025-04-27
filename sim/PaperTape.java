@@ -52,15 +52,17 @@ public class PaperTape extends RackUnit implements IODevice,
 	static final String[] sufx = { "txt" };
 	static final String[] sufd = { "Paper Tape" };
 	File last = null;
+	Font font;
 
-	abstract class DeviceButton extends JLabel implements MouseListener {
+	abstract class DeviceButton extends JPanel implements MouseListener {
 		int id;
 		ActionListener lstr;
 		ActionListener plstr; // re-positioning listener (if any)
+		public JLabel count;
 
 		public DeviceButton(String name, int id, ActionListener lstr) {
-			super(name);
-			setHorizontalAlignment(SwingConstants.CENTER);
+			super();
+			//setHorizontalAlignment(SwingConstants.CENTER);
 			this.lstr = lstr;
 			this.id = id;
 			setOpaque(true);
@@ -70,6 +72,33 @@ public class PaperTape extends RackUnit implements IODevice,
 			setBorder(BorderFactory.createBevelBorder(BevelBorder.RAISED,
 				normHi, normHi, normLo, normLo));
 			addMouseListener(this);
+			setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
+			JPanel pn = new JPanel();
+			pn.setPreferredSize(new Dimension(100, 10));
+			pn.setOpaque(false);
+			add(pn);
+			JLabel lb = new JLabel(name);
+			lb.setForeground(Color.white);
+			lb.setOpaque(false);
+			lb.setFont(font);
+			lb.setHorizontalAlignment(SwingConstants.CENTER);
+			add(lb);
+			pn = new JPanel();
+			pn.setPreferredSize(new Dimension(10, 10));
+			pn.setOpaque(false);
+			add(pn);
+			count = new JLabel("    ");
+			count.setForeground(Color.white);
+			count.setOpaque(false);
+			count.setBorder(BorderFactory.createBevelBorder(BevelBorder.LOWERED,
+				normHi, normHi, normLo, normLo));
+			count.setFont(font);
+			count.setHorizontalAlignment(SwingConstants.CENTER);
+			add(count);
+			pn = new JPanel();
+			pn.setPreferredSize(new Dimension(100, 10));
+			pn.setOpaque(false);
+			add(pn);
 		}
 
 		public void setPositioningListener(ActionListener lstr) {
@@ -110,6 +139,7 @@ public class PaperTape extends RackUnit implements IODevice,
 	class ReaderDevice extends DeviceButton {
 		public File file;
 		public RandomAccessFile in;
+		public int bytes;
 		public boolean busy;
 
 		public ReaderDevice(String name, int id, ActionListener lstr) {
@@ -122,11 +152,15 @@ public class PaperTape extends RackUnit implements IODevice,
 			if (f == null) {
 				setToolTipText("(none)");
 				in = null;
+				count.setText("    ");
+				bytes = 0;
 				return;
 			}
 			setToolTipText(file.getName());
 			try {
 				in = new RandomAccessFile(file, "r");
+				count.setText("   0");
+				bytes = 0;
 			} catch (Exception e) { }
 		}
 	}
@@ -134,6 +168,7 @@ public class PaperTape extends RackUnit implements IODevice,
 	class PunchDevice extends DeviceButton {
 		public File file;
 		public OutputStream out;
+		public int bytes;
 
 		public PunchDevice(String name, int id, ActionListener lstr) {
 			super(name, id, lstr);
@@ -145,11 +180,15 @@ public class PaperTape extends RackUnit implements IODevice,
 			if (f == null) {
 				setToolTipText("(none)");
 				out = null;
+				count.setText("    ");
+				bytes = 0;
 				return;
 			}
 			setToolTipText(file.getName());
 			try {
 				out = new FileOutputStream(file);
+				count.setText("   0");
+				bytes = 0;
 			} catch (Exception e) { }
 		}
 	}
@@ -165,6 +204,7 @@ public class PaperTape extends RackUnit implements IODevice,
 		tty_rdr_adv_char = RDR;
 		src = intr.registerINT(irq);
 		last = new File(System.getProperty("user.dir"));
+		font = new Font("Monospaced", Font.PLAIN, 12);
 		basePort = base;
 		reader = new ReaderDevice("READER", 1, this);
 		reader.setPositioningListener(this);
@@ -279,6 +319,9 @@ public class PaperTape extends RackUnit implements IODevice,
 					if (reader.in != null && !reader.busy) {
 						int c = reader.in.read();
 						if (c >= 0) {
+							++reader.bytes;
+							reader.count.setText(String.format("%4d", reader.bytes));
+							
 							ptrChar = c;
 							ptrRdy = true; // instantly ready
 						}
@@ -291,6 +334,8 @@ public class PaperTape extends RackUnit implements IODevice,
 				if (punch.out != null) {
 					try {
 						punch.out.write((byte)ptpChar);
+						++punch.bytes;
+						punch.count.setText(String.format("%4d", punch.bytes));
 					} catch (Exception e) {}
 					ptpRdy = true; // instantly ready
 				}
@@ -337,7 +382,7 @@ public class PaperTape extends RackUnit implements IODevice,
 	public void actionPerformed(ActionEvent e) {
 		DeviceButton fd = (DeviceButton)e.getSource();
 		String act = e.getActionCommand();
-		if (act.equals("ptp")) {
+		if (act.equals("ptp")) { // Paper Tape Positioner
 			if (reader.in == null) {
 				return;
 			}
@@ -366,6 +411,10 @@ public class PaperTape extends RackUnit implements IODevice,
 	public void windowDeiconified(WindowEvent e) { }
 	public void windowDeactivated(WindowEvent e) { }
 	public void windowClosing(WindowEvent e) {
+		try {
+			reader.bytes = (int)reader.in.getFilePointer();
+			reader.count.setText(String.format("%4d", reader.bytes));
+		} catch (Exception ee) {}
 		reader.busy = false;
 	}
 }
