@@ -9,18 +9,6 @@ commandline by removing the prefix.
 Quotes around values may be required, depending on your shell.
 
 <DL>
-<DT>asr33_host
-<DD>The hostname or IP address to connect to.
-This is the same as the first non-property, non-config-file, argument
-on the command line.
-</DD>
-
-<DT>asr33_port
-<DD>The port number to connect to.
-This is the same as the second non-property, non-config-file, argument
-on the command line.
-</DD>
-
 <DT>asr33_ansbak
 <DD>Specifies a string to use for the Answer-back drum.
 Typically, this drum generated NUL characters, and that is the default.
@@ -48,6 +36,27 @@ to trigger the reader advance. Default is 0x0f (Ctrl-O).
 the reader tape positioning view. Default is 8.
 Must be between 1 and 30.
 </DD>
+</DL>
+
+<H3>ASR33 Telnet Properties</H3>
+
+<DL>
+<DT>asr33_host
+<DD>The hostname or IP address to connect to.
+This is the same as the first non-property, non-config-file, argument
+on the command line.
+</DD>
+
+<DT>asr33_port
+<DD>The port number to connect to.
+This is the same as the second non-property, non-config-file, argument
+on the command line.
+</DD>
+
+<DT>asr33_server
+<DD>Sets server mode, where the ASR33 listens on the specified host and port,
+simulating a standalone case where the ASR33 waits for connections from remote ASR33s.
+Value is ignored, but must be present ("=" at least) when given on the commandline.
 </DL>
 
 </BODY>

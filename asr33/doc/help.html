@@ -75,6 +75,8 @@ will paste text from the clipboard as keyboard input.
 
 <H3>Misc</H3>
 
+<P>Two modes are possible for the telnet version, "server" or client.
+
 <P>Characters transmitted for the Reader or HERE IS function,
 or pasted into the window,
 are delayed according to the "delay" property, the number
@@ -83,15 +85,22 @@ Default is 100 milliseconds.
 
 <P>Pasted text being transmitted may be cancelled by pressing the F1 key.
 
-<P>If the connection to the remote is lost or not present to begin with,
-the menu item Print->Reconnect may be used to attempt to re-connect to the remote.
-The host and port may not be changed.
-
 <P>Currently, the printer window does not properly handle CR.
 A CR-LF pair will be fine, but attempts to use CR alone will not have
 good results. The CR character essentially does nothing, so characters
 following the CR do not overwrite at the beginning of the line but rather
 continue on at the end of the line.
+
+<H3>Telnet version</H3>
+
+<P>(client) If the connection to the remote is lost or not present to begin with,
+the menu item Print->Reconnect may be used to attempt to re-connect to the remote
+using the same host and port.
+
+<P>(client) A new, different, connection may be specified using the
+Print->New_Connection menu item.
+
+<P>The current connection may be dropped using the Print->Hangup menu item.
 
 </BODY>
 </HTML>

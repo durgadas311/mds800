@@ -28,9 +28,9 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 	static final Color lighted = new Color(255, 255, 200);
 
 	ASR33Container fe;
-	boolean hasConn;
 	InputStream idev;
 	OutputStream odev;
+	Thread thrd;
 	JTextArea text;
 	JScrollPane scroll;
 	int carr;
@@ -172,7 +172,6 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 	public ASR33(Properties props, ASR33Container fe) {
 		super(title + " - " + fe.getTitle());
 		this.fe = fe;
-		hasConn = fe.hasConnection();
 		idev = fe.getInputStream();
 		odev = fe.getOutputStream();
 		ansbak = new byte[20];
@@ -231,6 +230,7 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 
 		JMenuBar mb = new JMenuBar();
 		JMenu mu = new JMenu("Print");
+		JMenu main = mu;
 		JMenuItem mi = new JMenuItem("Copy ", KeyEvent.VK_C);
 		mi.setAccelerator(KeyStroke.getKeyStroke('C', InputEvent.ALT_DOWN_MASK));
 		mi.addActionListener(this);
@@ -245,11 +245,6 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 		mi = new JMenuItem("Tear Off", KeyEvent.VK_T);
 		mi.addActionListener(this);
 		mu.add(mi);
-		if (hasConn) {
-			mi = new JMenuItem("Reconnect", KeyEvent.VK_X);
-			mi.addActionListener(this);
-			mu.add(mi);
-		}
 		mb.add(mu);
 		mu = new JMenu("PTape");
 		mi = new JMenuItem("Punch", KeyEvent.VK_P);
@@ -264,6 +259,7 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 		mi.addActionListener(this);
 		mu.add(mi);
 		mb.add(mu);
+		fe.addMenus(mb, main, this);
 
 		JPanel pn = new JPanel();
 		pn.setPreferredSize(new Dimension(5, 30));
@@ -336,16 +332,54 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 		// bug in openjdk? does not remember current position
 		setLocationByPlatform(true);
 
+		restart();
+	}
+
+	private synchronized void restart() {
+		setTitle(title + " - " + fe.getTitle());
+		idev = fe.getInputStream();
+		odev = fe.getOutputStream();
 		if (idev != null) {
-			Thread t = new Thread(this);
-			t.start();
+			if (thrd != null && thrd.isAlive()) {
+				// now we have a problem, and java doesn't help
+				thrd.interrupt(); // probably does nothing
+				// we have to hope it noticed closed InputStream
+			}
+			thrd = new Thread(this);
+			thrd.start();
+		} else if (thrd != null) {
+			if (thrd.isAlive()) {
+				thrd.interrupt(); // probably does nothing
+			}
+			// we have to hope it noticed closed InputStream
+			thrd = null;
 		}
+	}
+
+	public void setFocus() {
+		text.requestFocus();
 	}
 
 	private void setAnswerBack(String s) {
 		byte[] n = s.getBytes();
-		for (int x = 0; x < n.length && x < 20; ++x) {
-			ansbak[x] = n[x];
+		int y = 0;
+		for (int x = 0; x < n.length && y < 20; ++x) {
+			byte c = n[x];
+			if (c == '\\') {
+				if (x + 1 < n.length) {
+					c = n[++x];
+					switch (c) {
+					case 'r': c = '\r'; break;
+					case 'n': c = '\n'; break;
+					case 'b': c = '\b'; break;
+					case 't': c = '\t'; break;
+					case 'f': c = '\f'; break;
+					case '\'': c = '\''; break;
+					case '"': c = '"'; break;
+					}
+				}
+			}
+			ansbak[y++] = c;
 		}
 	}
 
@@ -458,24 +492,29 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 		return file;
 	}
 
+	public void envChanged() {
+		restart();
+	}
+
 	public void run() {
 		while (true) {
 			int c;
 			try {
 				c = idev.read();
 			} catch (Exception ee) {
-				ee.printStackTrace();
+				//ee.printStackTrace();
 				break;
 			}
 			if (c < 0) {
-				System.err.format("Thread dying from input error\n");
+				//System.err.format("Thread dying from input error\n");
 				break;
 			}
 			if (!local.isSelected()) {
 				printChar(c);
 			}
 		}
-		fe.disconnect(); // notify container of our predicament
+		fe.failing(); // notify container of our predicament
+		// might race with server going to listen
 		setTitle(title + " - " + fe.getTitle());
 	}
 
@@ -592,6 +631,13 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 			return;
 		}
 		JMenuItem m = (JMenuItem)e.getSource();
+		if (m.getActionCommand() != null) {
+			if (!fe.menuActions(m)) {
+				return; // no changes for us
+			}
+			envChanged();
+			return;
+		}
 		if (m.getMnemonic() == KeyEvent.VK_C) {
 			copyFromTty();
 			return;
@@ -617,20 +663,6 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 		}
 		if (m.getMnemonic() == KeyEvent.VK_T) {
 			tearOff();
-			return;
-		}
-		if (m.getMnemonic() == KeyEvent.VK_X) {
-			if (fe.reconnect() == 0) {
-				return;
-			}
-			idev = fe.getInputStream();
-			odev = fe.getOutputStream();
-			setTitle(title + " - " + fe.getTitle());
-			if (idev != null) {
-				// need to avoid two or more threads running...
-				Thread t = new Thread(this);
-				t.start();
-			}
 			return;
 		}
 		if (m.getMnemonic() == KeyEvent.VK_P) {

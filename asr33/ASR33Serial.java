@@ -1,6 +1,7 @@
 // Copyright (c) 2025 Douglas Miller <durgadas311@gmail.com>
 
 import java.awt.*;
+import java.awt.event.*;
 import javax.swing.*;
 import java.io.*;
 import java.util.Properties;
@@ -47,9 +48,9 @@ public class ASR33Serial implements ASR33Container, PeripheralContainer, SerialD
 	public String getTitle() { return title; }
 	public InputStream getInputStream() { return fin; }
 	public OutputStream getOutputStream() { return fout; }
-	public boolean hasConnection() { return false; }
-	public void disconnect() { title = "dead"; }
-	public int reconnect() { return -1; }
+	public void addMenus(JMenuBar mb, JMenu main, ActionListener lstr) {}
+	public boolean menuActions(JMenuItem me) { return false; }
+	public void failing() { title = "dead"; }
 
 	// SerialDevice interface
 	public void write(int b) {
