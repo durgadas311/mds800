@@ -141,11 +141,7 @@ public class MDS_FDC extends RackUnit implements DiskController, PowerListener,
 			super();
 			this.lstr = lstr;
 			this.id = id;
-			if (name == null) {
-				name = String.format("FD%d", id);
-			} else {
-				name = String.format("%s%d", name, id + 1);
-			}
+			String label = String.format("DRIVE %d", id);
 			setOpaque(true);
 			setBackground(norm);
 			setPreferredSize(new Dimension(350, 80));
@@ -170,7 +166,7 @@ public class MDS_FDC extends RackUnit implements DiskController, PowerListener,
 			++gc.gridx;
 			gc.anchor = GridBagConstraints.SOUTH;
 			gc.insets.bottom = 5;
-			JLabel lb = new JLabel(name);
+			JLabel lb = new JLabel(label);
 			lb.setForeground(Color.white);
 			lb.setFont(tiny);
 			gb.setConstraints(lb, gc);
@@ -269,8 +265,8 @@ public class MDS_FDC extends RackUnit implements DiskController, PowerListener,
 		gc.anchor = GridBagConstraints.CENTER;
 		gc.gridx = 1;
 		gc.gridy = 1;
-		gb.setConstraints(fds[s], gc);
-		pnl.add(fds[s]);
+		gb.setConstraints(fds[s + 1], gc);
+		pnl.add(fds[s + 1]);
 		++gc.gridx;
 		JPanel pan = new JPanel();
 		pan.setOpaque(false);
@@ -278,8 +274,8 @@ public class MDS_FDC extends RackUnit implements DiskController, PowerListener,
 		gb.setConstraints(pan, gc);
 		pnl.add(pan);
 		++gc.gridx;
-		gb.setConstraints(fds[s + 1], gc);
-		pnl.add(fds[s + 1]);
+		gb.setConstraints(fds[s], gc);
+		pnl.add(fds[s]);
 		gc.gridx = 1;
 		gc.gridy = 2;
 		gc.gridwidth = 3;

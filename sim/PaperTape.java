@@ -257,6 +257,13 @@ public class PaperTape extends RackUnit implements IODevice,
 		gb.setConstraints(punch, gc);
 		add(punch);
 
+		++gc.gridy;
+		gc.gridx = 1;
+		gc.gridwidth = 3;
+		JLabel lab = new JLabel("MDS High Speed Paper Tape");
+		gb.setConstraints(lab, gc);
+		add(lab);
+
 		reset();
 	}
 

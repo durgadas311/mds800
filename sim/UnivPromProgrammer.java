@@ -254,7 +254,14 @@ public class UnivPromProgrammer extends RackUnit implements IODevice,
 		++gc.gridy;
 		gb.setConstraints(pwr, gc);
 		add(pwr);
-		--gc.gridy;
+		++gc.gridy;
+		gc.gridwidth = 3;
+		JLabel lab = new JLabel("MDS Universal PROM Programmer");
+		lab.setOpaque(false);
+		gb.setConstraints(lab, gc);
+		add(lab);
+		gc.gridwidth = 1;
+		gc.gridy -= 2;
 		++gc.gridx;
 		setGap(this, 200, 10);
 		++gc.gridx;

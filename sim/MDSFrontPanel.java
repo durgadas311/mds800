@@ -40,6 +40,7 @@ public class MDSFrontPanel implements IODevice, InterruptController, Interruptor
 	ImageIcon icn_off;
 	ImageIcon key_on;
 	ImageIcon key_off;
+	ImageIcon logo;
 
 	boolean clk1ms;
 	int src1ms;
@@ -81,6 +82,7 @@ public class MDSFrontPanel implements IODevice, InterruptController, Interruptor
 		icn_off = new ImageIcon(getClass().getResource("icons/sw-off.png"));
 		key_on = new ImageIcon(getClass().getResource("icons/key-on.png"));
 		key_off = new ImageIcon(getClass().getResource("icons/key-off.png"));
+		logo = new ImageIcon(getClass().getResource("icons/logo1.png"));
 		Color bg = new Color(50, 50, 50);
 		for (int x = 0; x < 8; ++x) {
 			JButton bn = new JButton();
@@ -147,6 +149,7 @@ public class MDSFrontPanel implements IODevice, InterruptController, Interruptor
 		gc.gridwidth = 10;
 		setGap(panel, RackUnit.WIDTH - 4, 10);
 		gc.gridwidth = 1;
+
 		gc.gridy = 1;
 		gc.gridx = 2;
 		setLabel(panel, "ON", 20);
@@ -172,7 +175,17 @@ public class MDSFrontPanel implements IODevice, InterruptController, Interruptor
 		++gc.gridx;
 		setLabel(panel, "RUN", 20);
 		++gc.gridx;
-		setGap(panel, 100, 10);
+//
+		gc.gridheight = 2;
+		gc.anchor = GridBagConstraints.EAST;
+		lab = new JLabel(logo);
+		lab.setPreferredSize(new Dimension(250, 50));
+		lab.setOpaque(false);
+		gb.setConstraints(lab, gc);
+		panel.add(lab);
+		gc.gridheight = 1;
+		gc.anchor = GridBagConstraints.CENTER;
+//
 		++gc.gridy;
 		gc.gridx = left;
 		gb.setConstraints(pwr, gc);
