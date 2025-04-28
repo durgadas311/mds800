@@ -234,29 +234,36 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 		JMenuItem mi = new JMenuItem("Copy ", KeyEvent.VK_C);
 		mi.setAccelerator(KeyStroke.getKeyStroke('C', InputEvent.ALT_DOWN_MASK));
 		mi.addActionListener(this);
+		mi.setActionCommand(".");
 		mu.add(mi);
 		mi = new JMenuItem("Paste", KeyEvent.VK_V);
 		mi.setAccelerator(KeyStroke.getKeyStroke('V', InputEvent.ALT_DOWN_MASK));
 		mi.addActionListener(this);
+		mi.setActionCommand(".");
 		mu.add(mi);
 		mi = new JMenuItem("Save", KeyEvent.VK_S);
 		mi.addActionListener(this);
+		mi.setActionCommand(".");
 		mu.add(mi);
 		mi = new JMenuItem("Tear Off", KeyEvent.VK_T);
 		mi.addActionListener(this);
+		mi.setActionCommand(".");
 		mu.add(mi);
 		mb.add(mu);
 		mu = new JMenu("PTape");
 		mi = new JMenuItem("Punch", KeyEvent.VK_P);
 		pun_mi = mi;
 		mi.addActionListener(this);
+		mi.setActionCommand(".");
 		mu.add(mi);
 		mi = new JMenuItem("Reader", KeyEvent.VK_R);
 		rdr_mi = mi;
 		mi.addActionListener(this);
+		mi.setActionCommand(".");
 		mu.add(mi);
 		mi = new JMenuItem("Rdr Position", KeyEvent.VK_Z);
 		mi.addActionListener(this);
+		mi.setActionCommand(".");
 		mu.add(mi);
 		mb.add(mu);
 		fe.addMenus(mb, main, this);
@@ -323,6 +330,7 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 		mu = new JMenu("Help");
 		mi = new JMenuItem("Show Help", KeyEvent.VK_H);
 		mi.addActionListener(this);
+		mi.setActionCommand(".");
 		mu.add(mi);
 		mb.add(mu);
 
@@ -631,7 +639,7 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 			return;
 		}
 		JMenuItem m = (JMenuItem)e.getSource();
-		if (m.getActionCommand() != null) {
+		if (!m.getActionCommand().equals(".")) {
 			if (!fe.menuActions(m)) {
 				return; // no changes for us
 			}
