@@ -382,6 +382,7 @@ public class PaperTape extends RackUnit implements IODevice,
 		int rv = ch.showDialog(this);
 		if (rv == JFileChooser.APPROVE_OPTION) {
 			file = ch.getSelectedFile();
+			last = file;
 		}
 		return file;
 	}

@@ -169,6 +169,7 @@ public class MDS_LPT extends JFrame implements IODevice, PeripheralContainer,
 		int rv = ch.showDialog(this);
 		if (rv == JFileChooser.APPROVE_OPTION) {
 			file = ch.getSelectedFile();
+			_last = file;
 		}
 		return file;
 	}

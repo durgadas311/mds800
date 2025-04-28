@@ -63,10 +63,56 @@ is to be the console)
 for input
 </OL>
 
+<H4>Menus</H4>
+
+<DL>
+<DT>System
+<DD><DL>
+	<DT>Reset
+	<DD>Same as the RESET button on the front panel</DD>
+	<DT>Quit
+	<DD>End the simulation</DD>
+</DL></DD>
+<DT>Debug
+<DD>Lots of options for debugging what is going in the machine.
+Note the "Dump to Log" item, which changes where the subsequent
+debug dumps are displayed. By default, they display in a pop-up window (GUI).
+Setting to "Log" causes them to be printed to the simulation log, which may be set to a
+file using properties but defaults to the terminal window.
+</DD>
+<DT>I/O
+<DD>Lists peripherals that might be hidden at any given time.
+These include direct-attached CRT and TTY devices (if configured)
+as well as the always-present LPT.
+Selecting the specific peripheral will make the window visible and raised.
+</DD>
+<DT>Disks
+<DD>(net yet implemented) Same as clicking on a disk drive.
+</DD>
+</DL>
+
+<H3>Floppy Disk Controller</H3>
+
+<P>The floppy disk controller allows selecting a file to use for
+the diskette image for each drive.
+Click on the drive to change the image file.
+Hovering over the drive shows the image currently inserted.
+Note that "DRIVE 0", the first drive, is on the right side.
+
+<P>Images must be for 8" single-density, single-sided, media.
+If the diskette image is to be used for CP/M, then "cpmtools" may
+be used to alter the contents. Typically, start with a copy of the
+"blank.logdisk" image and add files.
+
+<P>The initial image in a drive may be set using properties.
+
 <H3>High Speed Paper Tape</H3>
 
 <P>The high speed paper tape device allows selecting a file to use for
 punch output or reader input by clicking on the PUNCH or READER component.
+Hovering over the component shows the image currently inserted.
+
+<P>The initial image in the PUNCH or READER may be set using properties.
 
 <P>The tape in the reader may be positioned by right-clicking on the READER component.
 The reader is disabled during positioning.
@@ -74,6 +120,14 @@ The keys UP, DOWN, PAGE_UP, and PAGE_DOWN, along with the
 mouse wheel, will reposition the tape.
 HOME jumps to the beginning, and END jumps to the end.
 Press ENTER or Close the window to set the new position and release the reader.
+
+<H3>Universal PROM Programmer</H3>
+
+<P>The universal PROM programmer allows selecting a file to use for
+PROM input or output by clicking on the socket where the PROM is to be
+inserted. Limitations exist based on the configuration of the specific socket,
+which is done using properties.
+Hovering over the socket shows the image currently inserted.
 
 </BODY>
 </HTML>

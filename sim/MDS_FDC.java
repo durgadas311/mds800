@@ -327,6 +327,7 @@ public class MDS_FDC extends RackUnit implements DiskController, PowerListener,
 		int rv = ch.showDialog(this);
 		if (rv == JFileChooser.APPROVE_OPTION) {
 			file = ch.getSelectedFile();
+			last = file;
 		}
 		return file;
 	}

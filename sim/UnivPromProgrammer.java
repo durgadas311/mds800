@@ -3,11 +3,23 @@
 import java.util.Arrays;
 import java.util.Vector;
 import java.util.Properties;
+import java.util.Map;
+import java.util.HashMap;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
 import javax.swing.*;
 import javax.swing.border.*;
+
+// Based on Intel documentation, supported personality cards are:
+//
+// Card		Pins	Erased	Bits
+// 361		16	0	256x4
+// 864		16	1	512x4
+// 864:24	24	1	512x8
+// 878		24	1	512x8 1Kx8
+// 872		24	1	256x8
+// 816		24	1	2Kx8
 
 public class UnivPromProgrammer extends RackUnit implements IODevice,
 				TimeListener, PowerListener, ActionListener {
@@ -58,65 +70,106 @@ public class UnivPromProgrammer extends RackUnit implements IODevice,
 	int prom_ctl;
 	int prom_rd;
 
+	static class Personality {
+		int pins;	// socket/chip pins
+		int width;	// bits per word
+		byte init;	// erased value (word)
+		String[] org;	// SizexWidth
+
+		public Personality(int p, int w, int i, String[] o) {
+			pins = p;
+			width = w;
+			init = (byte)i;
+			org = o;
+		}
+	};
+
+	static Map<String,Personality> pers;
+
+	static {
+		pers = new HashMap<String,Personality>();
+		pers.put("361", new Personality(16, 4, 0,
+			new String[] { "256x4" }));
+		pers.put("865", new Personality(16, 4, 0x0f,
+			new String[] { "256x4", "512x4" }));
+		pers.put("865:18", new Personality(18, 8, 0xff,
+			new String[] { "1Kx8", "1Kx4" }));
+		pers.put("865:24", new Personality(24, 8, 0xff,
+			new String[] { "512x8", "1Kx8", "2Kx8" }));
+		pers.put("878", new Personality(24, 8, 0xff,
+			new String[] { "512x8", "1Kx8" }));
+		pers.put("872", new Personality(24, 8, 0xff,
+			new String[] { "256x8" }));
+		pers.put("816", new Personality(24, 8, 0xff,
+			new String[] { "2Kx8" }));
+		pers.put("832", new Personality(24, 8, 0xff,
+			new String[] { "4Kx8" }));
+	}
+
 	class PromSocket extends JPanel implements MouseListener {
 		public byte[] prom;
 		public File promFile;
 		public boolean dirty;
-		public int width;
 		public int pins;
-		public int size;
 		public byte init; // initial (erased) byte value
 		public int id;
 		public ActionListener lstr;
 		public JCheckBox bn;
 		public String[] sz;	// supported PROM sizes
 		public JComboBox<String> kb;
+		public JCheckBox cb;
+		public JPanel pn;
+		public int last;	// last selected item in kb
+		// set by specific chip selection (varies)
+		public int width;
+		public int size;
+		public int mask;
+		public long time; // progam pulse, nS
 
-		public PromSocket(Properties props, ImageIcon icn0, ImageIcon icn1,
-				int id, ActionListener lstr) {
+		public PromSocket(Properties props, int id, ActionListener lstr) {
 			super();
 			this.id = id;
 			this.lstr = lstr;
+			ImageIcon icn0, icn1;
+			String icn;
 			setOpaque(true);
 			setBackground(norm);
 			String s = props.getProperty(String.format("upp_socket%d", id));
-			if (s == null) {
-				s = (id == 1 ? "361" : "816");
-			}
-			if (s.equals("361")) {
-				pins = 16;
-				width = 4;
-				init = (byte)0;
-				sz = new String[] { "256x4" };
-			} else if (s.equals("864")) {
-				pins = 16;
-				width = 4;
-				init = (byte)0x0f;
-				sz = new String[] { "512x4" };
-			} else if (s.equals("864:24")) {
-				pins = 24;
-				width = 8;
-				init = (byte)0xff;
-				sz = new String[] { "512x8" };
-			} else if (s.equals("878")) {
-				pins = 24;
-				width = 8;
-				init = (byte)0xff;
-				sz = new String[] { "512x8", "1Kx8" };
-			} else if (s.equals("872")) {
-				pins = 24;
-				width = 8;
-				init = (byte)0xff;
-				sz = new String[] { "256x8" };
-			} else if (s.equals("816")) {
-				pins = 24;
-				width = 8;
-				init = (byte)0xff;
-				sz = new String[] { "2Kx8" };
+			if (s.matches("^[Dd][Ii][Pp][12][4680].*$")) {
+				// "dipXX E"
+				// XX = pins in socket
+				// E = 0/1 (erased state) [default 1]
+				String[] ss = s.split("\\s");
+				pins = Integer.valueOf(ss[0].substring(3));
+				if (pins < 16) pins = 16;
+				if (pins > 24) pins = 24;
+				if (ss.length > 1) {
+					init = (byte)(Integer.valueOf(ss[1]) != 0 ? 0xff : 0);
+				} else {
+					init = (byte)0xff;
+				}
+				sz = defaultOrgs();
 			} else {
-				// panic...
+				if (!pers.containsKey(s)) {
+					System.err.format("Invalid UPP personality " +
+						"\"%s\", using default\n", s);
+					s = null;
+				}
+				if (s == null) {
+					s = (id == 1 ? "361" : "816");
+				}
+				if (pers.containsKey(s)) {
+					Personality p = pers.get(s);
+					pins = p.pins;
+					init = p.init;
+					width = p.width;
+					sz = p.org;
+				}
 			}
-				
+			icn = String.format("icons/upp%d-", pins);
+			icn0 = new ImageIcon(getClass().getResource(icn + "mt.png"));
+			icn1 = new ImageIcon(getClass().getResource(icn + "ic.png"));
+
 			bn = new JCheckBox();
 			bn.setOpaque(false);
 			bn.setText("");
@@ -131,10 +184,74 @@ public class UnivPromProgrammer extends RackUnit implements IODevice,
 			add(bn);
 
 			kb = new JComboBox<String>(sz);
+			cb = new JCheckBox("Erase");
+			pn = new JPanel();
+			pn.setLayout(new BoxLayout(pn, BoxLayout.Y_AXIS));
+			pn.add(cb);
+			pn.add(kb);
+			last = 0;
+		}
+
+		// pins	data	max	min(arb)
+		// 16	4	512	32
+		// 16	8	32	32
+		// 18	4	2048	256
+		// 18	8	128	32
+		// 20	4	4096 *	256
+		// 20	8	512	128
+		// 24	4	4096 *	256
+		// 24	8	4096 *	256
+		private String[] defaultOrgs() {
+			Vector<String> orgs = new Vector<String>();
+			int sz, na, ma;
+			for (int w = 4; w <= 8; w += 4) {
+				// theoretical maximum number of addr bits possible,
+				// taking into account data bits, power/ground,
+				// and one chip select.
+				na = pins - w - 3; // dat,pwr,gnd,cs
+				if (na > 12) {	// pgmr has only 12 adr bits
+					na = 12;
+				}
+				ma = (1 << na);
+				if (ma >= 1024) {
+					sz = 256;
+				} else if (ma > 256) {
+					sz = 128;
+				} else {
+					sz = 32;
+				}
+				for (; sz <= ma; sz *= 2) {
+					if (sz > 512) {
+						orgs.add(String.format("%dKx%d",
+							sz / 1024, w));
+					} else {
+						orgs.add(String.format("%dx%d", sz, w));
+					}
+				}
+			}
+			return orgs.toArray(new String[0]);
+		}
+
+		public void changeSocket() {
+			// TODO:
+			// bn.setDisabledIcon(icn0);
+			// bn.setSelectedIcon(icn1);
+			// ...
+		}
+
+		public void pickProm() {
+			setFile(null);
+			kb.setSelectedIndex(last);
+			cb.setSelected(false);
+			File f = pickFile("Insert PROM", pn);
+			if (f == null) {
+				return;
+			}
+			setFile(f);
 		}
 
 		// 'p' is PROM size, e.g. "2Kx8"
-		public void setFile(File f, String p) {
+		public void setFile(File f) {
 			// assume already flushed...
 			dirty = false;
 			promFile = f;
@@ -144,6 +261,8 @@ public class UnivPromProgrammer extends RackUnit implements IODevice,
 				bn.setSelected(false);
 				return;
 			}
+			int idx = kb.getSelectedIndex();
+			String p = kb.getItemAt(idx);
 			String[] pp = p.split("x");
 			int e = pp[0].length();
 			if (pp[0].endsWith("K")) {
@@ -159,27 +278,30 @@ public class UnivPromProgrammer extends RackUnit implements IODevice,
 			}
 			if (f.exists()) {
 				long len = f.length();
-				if (len != size || wid != width) {
+				if (len != size) {
 					PopupFactory.warning(this, "PROM",
 						String.format("image size %dx%d != %s\n",
 							len, wid, p));
-					setFile(null, null);
+					setFile(null);
 					return;
 				}
 			}
+			mask = (1 << wid) - 1;
 			prom = new byte[size];
-			Arrays.fill(prom, init);
+			Arrays.fill(prom, (byte)(init & mask));
 			dirty = true;
-			if (f.exists()) {
+			time = 1000000; // assume 1mS program pulse width
+			if (!cb.isSelected() && f.exists()) {
 				try {
 					InputStream is = new FileInputStream(f);
-					is.read(prom);
+					int n = is.read(prom);
 					is.close();
-					dirty = false;
+					dirty = (n < size);
 				} catch (Exception ee) {}
 			}
 			bn.setToolTipText(promFile.getName());
 			bn.setSelected(true);
+			last = idx;
 		}
 
 		public void mousePressed(MouseEvent e) { }
@@ -201,13 +323,14 @@ public class UnivPromProgrammer extends RackUnit implements IODevice,
 		}
 
 		public String dumpDebug() {
-			String ret = String.format("socket #%d dip%d x%d era %02x\n",
-					id, pins, width, init & 0xff);
+			String ret = String.format("socket #%d dip%d x%d " +
+						"era %02x msk %02x\n",
+					id, pins, width, init, mask);
 			if (prom == null) {
 				ret += "(empty)\n";
 			} else {
-				ret += String.format("%s %dB\n",
-					promFile.getName(), prom.length);
+				ret += String.format("%s %dB dirty=%s\n",
+					promFile.getName(), prom.length, dirty);
 			}
 			return ret;
 		}
@@ -225,12 +348,8 @@ public class UnivPromProgrammer extends RackUnit implements IODevice,
 		norm = getBackground();
 		actv = getBackground().darker();
 		soks = new PromSocket[2];
-		ImageIcon icon16_out = new ImageIcon(getClass().getResource("icons/upp16-mt.png"));
-		ImageIcon icon16_in = new ImageIcon(getClass().getResource("icons/upp16-ic.png"));
-		ImageIcon icon24_out = new ImageIcon(getClass().getResource("icons/upp24-mt.png"));
-		ImageIcon icon24_in = new ImageIcon(getClass().getResource("icons/upp24-ic.png"));
-		soks[0] = new PromSocket(props, icon16_out, icon16_in, 1, this);
-		soks[1] = new PromSocket(props, icon24_out, icon24_in, 2, this);
+		soks[0] = new PromSocket(props, 1, this);
+		soks[1] = new PromSocket(props, 2, this);
 		pwr = new RoundLED(LED.Colors.RED);
 		pgm = new RoundLED(LED.Colors.RED);
 
@@ -394,29 +513,35 @@ public class UnivPromProgrammer extends RackUnit implements IODevice,
 			if (chkProm(cursok)) {
 				break;
 			}
+			prom_sts = STS_BUSY;
+			timeout = 0;
 			pgm.set(true);
 			if (prom_nib != 0) {
+				// error if width != 4?
 				val >>= 4;
 			}
-			if (prom_sok == 1) {
-				val &= 0x0f;
+			val &= cursok.mask;
+			int val0 = cursok.prom[prom_adr] & cursok.mask;
+			if (cursok.init == 0) { // PROM bits erase to "0"
+				val0 |= val;
+			} else {	// PROM bits erase to "1"
+				val0 &= val;
 			}
-			int val0 = cursok.prom[prom_adr] & 0xff;
-			// TODO: different for bipolar PROMs?
-			if ((val0 & val) != val) {
-				prom_sts = STS_PERR;
-				// TODO: go ahead and trash byte?
-				break;
+			if (val0 != val) {
+				prom_sts = STS_PERR; // BUSY off
+				// TODO: go ahead and trash byte? continue?
+				pgm.set(false);	//
+				break;		//
 			}
 			cursok.prom[prom_adr] = (byte)val;
 			cursok.dirty = true;
 			// TODO: flush to file after every write?
-			prom_sts = STS_DONE;
-			timeout = now + 1000000; // 1mS to program?
+			prom_sts = STS_DONE; // success... after timeout
+			timeout = now + cursok.time;
 			break;
 		case 1:	// adr hi, ctl
 			prom_ctl = (val & 0x80) >> 7;
-			prom_rd = (val & 0x40) >> 6;
+			prom_rd = (val & 0x40) >> 6;	// how does this work?
 			prom_sok = (val & 0x20) >> 5;
 			if (prom_sok == 0) prom_sok = 2;
 			prom_nib = (val & 0x10) >> 4;
@@ -465,6 +590,7 @@ public class UnivPromProgrammer extends RackUnit implements IODevice,
 		int rv = ch.showDialog(this);
 		if (rv == JFileChooser.APPROVE_OPTION) {
 			file = ch.getSelectedFile();
+			last = file;
 		}
 		return file;
 	}
@@ -475,11 +601,6 @@ public class UnivPromProgrammer extends RackUnit implements IODevice,
 		}
 		PromSocket sk = (PromSocket)e.getSource();
 		flushProm(sk);
-		sk.setFile(null, null);
-		File f = pickFile("Insert PROM", sk.kb);
-		if (f == null) {
-			return;
-		}
-		sk.setFile(f, sk.kb.getItemAt(sk.kb.getSelectedIndex()));
+		sk.pickProm();
 	}
 }

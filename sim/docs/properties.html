@@ -22,6 +22,10 @@ or ".mds800rc" in the user's home directory.
 <DL>
 <DT>mds800_log
 <DD>Redirect simulation output to the specified file.
+File will be truncated each time the simulation starts, unless
+an "a" is added after the file name ("a"ppend to existing file).
+Default is to log messages to the stderr stream of the terminal window
+where the simulation was run.
 </DD>
 
 <DT>mds800_mon
@@ -161,6 +165,28 @@ Default is 0x0f (Ctrl-O).
 <DT>ptp_rdr_view
 <DD>Specifies the number of characters before and after the current
 to show in the tape positioner. Default is 8. Must be between 1 and 30.
+
+</DL>
+
+<H3>Universal PROM Programmer</H3>
+
+<DL>
+
+<DT>upp_socket<I>N</I>
+<DD>Where <I>N</I> is "1" (left) or "2" (right).
+Configures the personality of designated socket.
+Supports the Intel personality modules "361", "865" (16-pin version),
+"864:18" (18-pin version), "865:24" (24-pin version), "878", "872",
+"816", "832".
+<P>As an alternative, a generic personality may be described using the syntax
+"dip<I>PP</I>" where <I>PP</I> is 16, 18, 20, or 24 indicating the number of pins.
+An optional 0/1 parameter may be added to indicate the erased state of the PROM bits,
+default is "1".
+PROM sizes are computed (for 4 and 8-bit words) based on
+estimated number of address pins possible.
+<P>This personality determines the appearance of the socket and the
+options available when inserting a file "PROM" into the socket.
+</DD>
 
 </DL>
 
