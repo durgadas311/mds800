@@ -20,7 +20,9 @@ public class PaperTapePositioner extends JFrame
 	int end;
 
 	class PaperTape extends JPanel {
-		static final int cell = 15; // spacing of each dot (H/V)
+		static final int cell = 15; // spacing of each dot (H/V), 0.1"
+		static final int data = 11;	// @0.072/0.1 = 10.8
+		static final int sprk = 7;	// @0.046/0.1 = 6.9
 		static final Color buff = new Color(250,240,200);
 		int tapew;
 		int tapeh;
@@ -30,9 +32,9 @@ public class PaperTapePositioner extends JFrame
 
 		public PaperTape() {
 			super();
-			tapew = 9 * cell + 5;
+			tapew =  10 * cell;
 			tapeh = win * cell;
-			curs = buf * cell - 1;
+			curs = buf * cell;
 			marg = 20;	// total horiz margins (10+10)
 			setPreferredSize(new Dimension(tapew + marg, tapeh));
 			setBackground(Color.gray);
@@ -56,16 +58,16 @@ public class PaperTapePositioner extends JFrame
 			g2d.setColor(Color.black);
 			// draw tapeBuf backwards... End is at top...
 			l = end - 1;
-			for (int y = t + 3; y < b && l >= beg; y += cell) {
+			for (int y = t + 2; y < b && l >= beg; y += cell) {
 				bb = 0;
 				for (int x = 0; x < 9; ++x) {
+					int xx = m + (x * cell);
 					if (x == 3) {
-						g2d.fillOval(m + (x * cell) + 2, y + 2,
-							4, 4);
+						g2d.fillOval(xx + 2, y + 2, sprk, sprk);
 						continue;
 					}
 					if ((tapeBuf[l] & (1 << bb)) != 0) {
-						g2d.fillOval(m + (x * cell), y, 8, 8);
+						g2d.fillOval(xx, y, data, data);
 					}
 					++bb;
 				}

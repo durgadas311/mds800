@@ -1,0 +1,19 @@
+Tape for punching was usually 0.00394 inches (0.100 mm) thick. The
+two most common widths were
+
+*	11⁄16 inch (17 mm) for five bit codes, and
+*	1 inch (25 mm) for tapes with six or more bits.
+
+Hole spacing was 0.1 inches (2.5 mm) in both directions.
+
+Data holes were 0.072 inches (1.8 mm) in diameter;
+
+sprocket feed holes were 0.046 inches (1.2 mm).
+
+      +-----\ 0.1"
+      | +---/
+      | |
+| O O O o O O O O O |
+| |             | |
+| +---\ 0.1"    | +---\ 0.1"
++-----/         +-----/
