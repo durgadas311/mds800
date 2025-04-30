@@ -168,7 +168,7 @@ bsw	equ	0010b	; BOOT switch
 ; overlays iobyte for reads
 L0003:	db	00000000b	; default iobyte
 
-	db	9,21		; datestamp
+	db	9,21		; datestamp, MM,DD
 
 L0006:	di			;; 0006: f3          .
 	mvi	a,012h	; ICW1: init i8259, SINGLE, vectors in xx00H
@@ -350,7 +350,7 @@ coldsf:	jmp	colds		;; f800: c3 30 f8    .0.
 	jmp	Lfddc		;; f81e: iodef - define usr i/o - C=fnc vec, DE=rtn
 	jmp	Lffc6		;; f821: nop - imm return
 
-	db	9,15h
+	db	9,21	; date code, MM,DD
 
 abort:	lhld	ramtop		;; f826: 2a 04 00    *..
 	mvi	l,LOW monstk	;; f829: 2e c8       ..

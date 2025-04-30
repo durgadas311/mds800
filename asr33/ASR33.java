@@ -50,6 +50,7 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 	int rdr_bytes;
 	JMenuItem pun_mi;
 	JMenuItem rdr_mi;
+	JMenuItem rdr_pos;
 	OutputStream pun_out;
 	RandomAccessFile rdr_in;
 	JLabel spinner;
@@ -265,8 +266,10 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 		mi.addActionListener(this);
 		mi.setActionCommand(".");
 		mu.add(mi);
+		rdr_pos = mi;
 		mb.add(mu);
 		fe.addMenus(mb, main, this);
+		rdr_pos.setEnabled(false); // until tape in reader...
 
 		JPanel pn = new JPanel();
 		pn.setPreferredSize(new Dimension(5, 30));
@@ -708,6 +711,7 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 			rdr_in = null;
 			rdr.setSelected(false);
 			rdr.setEnabled(false);
+			rdr_pos.setEnabled(false);
 			rdr_start.setEnabled(false);
 			File file = pickFile("Reader");
 			if (file == null) {
@@ -716,9 +720,10 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 			try {
 				rdr_in = new RandomAccessFile(file, "r");
 				rdr_mi.setText("Reader - " + file.getName());
-				rdr.setEnabled(true);
 				rdr_cnt.setText("   0");
 				rdr_bytes = 0;
+				rdr.setEnabled(true);
+				rdr_pos.setEnabled(true);
 			} catch (Exception ee) {
 				System.err.println(ee.getMessage());
 			}
