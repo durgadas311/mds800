@@ -12,7 +12,7 @@ SIM_CLASS = GenericHelp.class \
 	SerialDevice.class \
 	SuffFileChooser.class \
 	SuffFileFilter.class \
-	VirtualUART.class \
+	VirtualUART.class
 
 DOCS = $(wildcard doc/*.html)
 

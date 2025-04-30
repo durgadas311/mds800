@@ -26,6 +26,7 @@ VirtualMDS800.jar: all $(DOCS) temp
 		icons/*.png *.rom docs/*.html -C temp .
 
 ASR33_RM = temp/ASR33telnet.class
+ADM3A_RM = temp/ADM3Atelnet.class
 
 temp: __FRC__
 	mkdir -p temp
@@ -37,5 +38,7 @@ temp: __FRC__
 	cd temp; jar -xf ../../asr33/ASR33plugin.jar
 	rm -rf temp/META-INF $(ASR33_RM)
 	cd temp; jar -xf ../../h19/H19plugin.jar
+	cd temp; jar -xf ../../adm3a/ADM3Aplugin.jar
+	rm -rf temp/META-INF $(ADM3A_RM)
 
 __FRC__:
