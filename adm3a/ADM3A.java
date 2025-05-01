@@ -29,6 +29,7 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 	int paste_delay;
 	int paste_cr_delay;
 	File _last;
+	Paster paster;
 
 	ADM3ACrtScreen crt;
 	int curs_x;
@@ -48,6 +49,56 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 	Clip _beep;
 	OutputStream log = null;
 
+	class Paster implements Runnable {
+		Thread thr;
+		java.util.concurrent.LinkedBlockingDeque<String> fifo;
+		boolean cancel;
+
+		public Paster() {
+			fifo = new java.util.concurrent.LinkedBlockingDeque<String>();
+			thr = new Thread(this);
+			thr.start();
+		}
+
+		public void addText(byte[] txt) {
+			String s = new String(txt);
+			fifo.add(s);
+		}
+
+		public void addText(String txt) {
+			fifo.add(txt);
+		}
+
+		public synchronized void cancel() {
+			cancel = true;
+			fifo.clear();
+		}
+
+		public void run() {
+			String s;
+			while (true) {
+				try {
+					s = fifo.take();
+					synchronized (this) {
+						cancel = false; // assume stale
+					}
+				} catch (Exception ee) {
+					ee.printStackTrace();
+					break;
+				}
+				for (int x = 0; x < s.length(); ++x) {
+					synchronized (this) {
+						if (cancel) break;
+					}
+					typeChar((int)s.charAt(x));
+					try {
+						Thread.sleep(paste_delay);
+					} catch (Exception ee) {}
+				}
+			}
+		}
+	}
+
 	public ADM3A(Properties props, ASR33Container fe) {
 		super(title + " - " + fe.getTitle());
 		this.fe = fe;
@@ -57,6 +108,7 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 		paste_delay = 100; // mS, 10 char/sec
 		paste_cr_delay = 1000; // mS, wait after CR
 		_last = new File(System.getProperty("user.dir"));
+		paster = new Paster();
 
 		getContentPane().setName("ADM3A Emulator");
 		getContentPane().setBackground(new Color(100, 100, 100));
@@ -82,6 +134,14 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 				System.err.format("Failed to setup adm3a_log file %s\n",
 						ss[0]);
 			}
+		}
+		s = props.getProperty("adm3a_delay");
+		if (s != null) {
+			paste_delay = Integer.valueOf(s);
+		}
+		s = props.getProperty("adm3a_cr_delay");
+		if (s != null) {
+			paste_cr_delay = Integer.valueOf(s);
 		}
 
 		JMenuBar mb = new JMenuBar();
@@ -112,6 +172,7 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 
 		crt = new ADM3ACrtScreen(props);
 		//crt.addKeyListener(this);
+		crt.addMouseListener(this);
 		JPanel pan = setupScreen();
 		add(pan);
 
@@ -341,6 +402,7 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 
 	// Note: these are ASCII codes, not KeyPress events...
 	public void process_keychar(int c) {
+		crt.dragEnd();
 		c &= 0x7f;
 		if (c == 0x1b) {	// ^[, ESC
 			mode = modes.ESC;
@@ -396,6 +458,9 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 			need_wrap = false;
 			curs_x = 0;
 			curs_x = 0;
+		} else if (c == 0x05) {	// ^E, ENQ (WRU) - send answerback
+			paster.addText(ansbak);
+			return;
 		} else if (c < ' ') {
 			// TODO: handle other Ctrl chars?
 			return;
@@ -436,12 +501,12 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 	}
 
 	private void copyFromTty() {
-//		String s = text.getSelectedText();
-//		if (s == null) {
-//			return;
-//		}
-//		StringSelection ss = new StringSelection(s);
-//		Toolkit.getDefaultToolkit().getSystemClipboard().setContents(ss, null);
+		String s = crt.getSelectedText();
+		if (s == null) {
+			return;
+		}
+		StringSelection ss = new StringSelection(s);
+		Toolkit.getDefaultToolkit().getSystemClipboard().setContents(ss, null);
 	}
 
 	private void pasteToTty() {
@@ -450,9 +515,29 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 		try {
 			if (t != null && t.isDataFlavorSupported(DataFlavor.stringFlavor)) {
 				String text = (String)t.getTransferData(DataFlavor.stringFlavor);
-//				paster.addText(text);
+				paster.addText(text);
 			}
 		} catch (Exception ee) {
+		}
+	}
+
+	private void typeChar(int c) {
+		if (loopback) {
+			process_keychar(c);
+			if (c == '\r' && loopback) {
+				process_keychar('\n');
+			}
+			return;
+		}
+		if (odev == null) {
+			return;
+		}
+		try {
+			odev.write((byte)c);
+			odev.flush();
+		} catch (Exception ee) {
+			ee.printStackTrace();
+			// handle? probably means back-end is dead...
 		}
 	}
 
@@ -460,6 +545,7 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 		if (e.getButton() != MouseEvent.BUTTON2) {
 			return;
 		}
+		crt.dragEnd();
 		pasteToTty();
 	}
 	public void mouseEntered(MouseEvent e) { }
@@ -510,14 +596,14 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
         public void keyPressed(KeyEvent e) {
                 int c = e.getKeyChar();
                 int k = e.getKeyCode();
-  		int m = e.getModifiers();
+  		int m = e.getModifiersEx();
 //System.err.format("KEY %02x (%x : %d : %d)\n", (int)c, m, l, k);
 		if (k == KeyEvent.VK_F12) {
-//			paster.addText(ansbak);
+			paster.addText(ansbak);
 			return;
 		}
 		if (k == KeyEvent.VK_F1) {
-//			paster.cancel();
+			paster.cancel();
 			return;
 		}
 		if ((m & InputEvent.ALT_DOWN_MASK) != 0) {
@@ -536,21 +622,8 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 			c = 0x7f;
 		}
 		if (c < 0x80) {
-			if (loopback) {
-				process_keychar(c);
-				if (c == '\r' && loopback) {
-					process_keychar('\n');
-				}
-				return;
-			}
-			try {
-				odev.write((byte)c);
-				odev.flush();
-				e.consume();
-			} catch (Exception ee) {
-ee.printStackTrace();
-				// handle? probably means back-end is dead...
-			}
+			typeChar(c);
+			e.consume();
 		}
         }
         public void keyReleased(KeyEvent e) { }
