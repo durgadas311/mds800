@@ -36,7 +36,7 @@ public class ADM3ACrtScreen extends JPanel
 
 	public ADM3ACrtScreen(Properties props) {
 		String f = "fonts/ADM3A.ttf";
-		_fz = 16f;
+		_fz = 18f;
 		Color fc = Color.green;
 		String s = props.getProperty("adm3a_font");
 		if (s != null) {

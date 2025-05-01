@@ -21,10 +21,10 @@ int inv = 0; // invert bytes from ROM
 int rev = 0; // doing reverse video characters
 int itl = 0; // interlace mode
 int wid = 5;
-int padl = 2;
+int padl = 1;
 int padr = 1;
-int hei = 8;
-int asc = 8;
+int hei = 9;
+int asc = 9;
 int dsc = 0; // computed (hei - asc)
 
 // These numbers are divided by 10 to get font coords.
@@ -150,9 +150,13 @@ void do_char(int c, int fc, int ul) {
 	for (r = 0; r < hei; ++r) {
 		// char gen ROMs start with top row,
 		// SFD/TTF convention is starting at bottom.
-		int i = hei - r - 1;
+		int i = hei - r - 1;	// 8,7,6,5,4,3,2,1,0
 		int w = wid + padl + padr;
-		b = buf[a + i];
+		if (i >= bpc) {
+			b = 0;
+		} else {
+			b = buf[a + i];
+		}
 		if (inv) {
 			b = ~b;
 		}
