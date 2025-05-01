@@ -1,0 +1,96 @@
+<HTML>
+<HEAD>
+</HEAD>
+<BODY>
+<H2>ADM3A Terminal Properties</H2>
+
+<P>Properties with the "adm3a_" prefix may be specified on the
+commandline by removing the prefix.
+Quotes around values may be required, depending on your shell.
+
+<P>The terminal will search for a file containing properties
+in the following order:
+
+<OL>
+<LI>The first existing file on the commandline
+<LI>Using the environment variable ADM3A_CONFIG
+<LI>Looking for "adm3arc" in the current directory
+<LI>Looking for ".adm3arc" in the user's home directory
+</OL>
+
+<DL>
+<DT>adm3a_ansbak
+<DD>Specifies a string to use for the Answer-back drum.
+Typically, this drum generated NUL characters, and that is the default.
+A maximum of 20 characters is used, with the remaining positions
+on the drum being left as NUL characters.
+This string may include the standard "escapes" for special characters,
+such as "\r" for CR and "\n" for LF.
+</DD>
+
+<DT>adm3a_delay
+<DD>The delay inserted after each character is pasted or otherwise
+automatically sent to the host, in milliseconds. Default is 100.
+</DD>
+
+<DT>adm3a_font
+<DD>Specifies the font to use for the display. Generally, only
+the built-in font "fonts/ADM3A.ttf" will work properly,
+as the character codes need to match what is used internally
+to select the control character glyphs and reverse-video glyphs.
+</DD>
+
+<DT>adm3a_font_size
+<DD>Specifies the font size to use for the display.
+The optimal vallue for the built-in font is "18", the
+default.
+</DD>
+
+<DT>adm3a_font_color
+<DD>Specifies the font color to use for the display.
+The value is specified in RGB hexadecimal, for example
+green would be "00ff00".
+The default is green.
+
+<DT>adm3a_beep
+<DD>Specifies the audio clip file to use for the terminal beep.
+Default is the built-in "adm3a_beep.wav".
+There also exists a built-in "h19beep.wav".
+</DD>
+
+<DT>adm3a_beep_volume
+<DD>Specifies the audio volume to use for the terminal beep,
+in percent. Default is "50".
+</DD>
+
+<DT>adm3a_loopback
+<DD>This is a special mode that sends all keys pressed back to
+the terminal, bypassing any connected computer.
+It cannot be turned off without restarting the terminal
+(without the property being set).
+It is generally only useful for test purposes.
+No value is require, however when specifying on the
+commandline it must include the "=".
+</DD>
+
+</DL>
+
+<H3>ADM3A Telnet Properties</H3>
+
+<DL>
+<DT>adm3a_host
+<DD>The hostname or IP address to connect to.
+This is the same as the first non-property, non-config-file, argument
+on the command line.
+</DD>
+
+<DT>adm3a_port
+<DD>The port number to connect to.
+This is the same as the second non-property, non-config-file, argument
+on the command line.
+</DD>
+
+</DL>
+
+</BODY>
+</HTML>

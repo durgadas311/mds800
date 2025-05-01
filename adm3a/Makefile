@@ -8,7 +8,7 @@ JAVAS = ADM3A.java ADM3ACrtScreen.java ADM3Atelnet.java ADM3ASerial.java \
 	BezelRoundedRectangle.java
 CLASSES = $(subst .java,.class,$(JAVAS))
 JARS = ADM3Atelnet.jar ADM3Aplugin.jar
-SIM_CLASS = VirtualUART.class
+SIM_CLASS = VirtualUART.class GenericHelp.class
 
 DOCS = $(wildcard doc/*.html)
 
@@ -25,11 +25,11 @@ jar: $(JARS)
 # Need to exclude ADM3ASerial.class...
 ADM3Atelnet.jar: $(CLASSES) $(SIM_CLASS) $(DOCS)
 	echo "Main-Class: ADM3Atelnet" >Manifest.txt
-	jar -cmf Manifest.txt $@ *.class fonts/*.ttf *.wav
+	jar -cmf Manifest.txt $@ *.class fonts/*.ttf *.wav adm3a_doc
 
 # Need to exclude ADM3Atelnet.class...
 ADM3Aplugin.jar: $(CLASSES) $(DOCS)
-	jar -cMf $@ ADM3A*.class BezelRoundedRectangle.class fonts/*.ttf *.wav
+	jar -cMf $@ ADM3A*.class BezelRoundedRectangle.class fonts/*.ttf *.wav adm3a_doc
 
 ship: jar
 	rsync -Wuv ADM3Atelnet.jar ../bin

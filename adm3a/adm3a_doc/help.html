@@ -1,0 +1,69 @@
+<HTML>
+<HEAD>
+</HEAD>
+<BODY>
+<H2>ADM3A Terminal Help</H2>
+
+<P><A HREF="properties.html">Properties</A>
+
+<H3>Running</H3>
+
+<P>The general command syntax for the telnet version is:
+<P><KBD>java -jar ADM3Atelnet.jar [<I>cfg</I>] [<I>prop</I>=<I>value</I>...] [<I>host</I> <I>port</I>]</KBD>
+
+<H3>Controls</H3>
+
+<P>Text on the screen may be selected using the left mouse button
+and dragging the usual way. Text remains selected until it scrolls off
+the screen or another mouse button click.
+
+<P>The menu item Screen->Copy, or key Alt-C, copies the current
+selection to the clipboard. This is generally done automatically
+when the mouse button is released, but may be used to re-copy the
+current selection if the clipboard contents gets replaced
+by use outside of the terminal.
+
+<P>The menu item Screen->Paste, or key Alt-V, copies the current
+contents of the clipboard to the terminal output (sends to the
+computer). The text is sent at the rate specified by the
+adm3a_delay property.
+
+<P>The menu item Screen->Copy_All, or key Alt-A, copies the
+antire current screen text to the clipboard.
+
+<H4>Telnet version</H4>
+
+<P>The menu item Screen->Reconnect will attempt to
+reconnect to the computer using the same host and port
+previously specified, provided the current connection was lost.
+
+<P>The menu item Screen->Hangup will disconnect
+the terminal from the computer (release the telnet connection).
+
+<P>The menu item Screen->New_Connection will
+prompt for a new host and port and attempt to connect.
+This is done after doing a hangup of any currrent connection.
+
+<H3>Keyboard</H3>
+
+<P>F12 functions as the HERE IS key. The answer-back
+drum defaults to NUL characters, but may be set to
+a string using the "ansbak" property (20 characters maximum).
+The data is sent using the same delay as for paste operations.
+
+<P>F1 will cancel any current paste or HERE IS transission
+being done. This is especially useful is an excessively
+large amount of text is accidentally pasted.
+
+<P>The Enter key produces CR, use Ctrl-J or Ctrl-Enter for LF.
+
+<P>Delete or Shift-Backspace sends the RUB code (DEL/Rubout) (0x7f)
+
+<P>The cursor keys send the equivalent cursor movement codes.
+
+<P>The Home key sends the HOME cursor code.
+
+<P>The Shift-Delete key sends the CLEAR (screen) code.
+
+</BODY>
+</HTML>

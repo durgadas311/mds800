@@ -23,6 +23,7 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 	InputStream idev;
 	OutputStream odev;
 	Thread thrd;
+	GenericHelp help;
 
 	byte[] ansbak;
 	boolean loopback;
@@ -46,7 +47,7 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 		SETCURS2,
 	};
 
-	Clip _beep;
+	Bell bell;
 	OutputStream log = null;
 
 	class Paster implements Runnable {
@@ -99,6 +100,82 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 		}
 	}
 
+	class Bell implements ActionListener {
+		Clip beep;
+		private javax.swing.Timer timer;
+
+		public Bell(Properties props) {
+			timer = new javax.swing.Timer(250, this);
+			String s = props.getProperty("adm3a_beep");
+			if (s == null) {
+				s = "adm3a_beep.wav";
+			} else if (s.length() == 0) {
+				beep = null;
+				return;
+			}
+			String beep_wav = s;
+			// TODO: look for file first...
+			try {
+				AudioInputStream wav =
+					AudioSystem.getAudioInputStream(
+						new BufferedInputStream(
+							this.getClass().getResourceAsStream(beep_wav)));
+				AudioFormat format = wav.getFormat();
+				DataLine.Info info = new DataLine.Info(Clip.class, format);
+				beep = (Clip)AudioSystem.getLine(info);
+				beep.open(wav);
+				//beep.setLoopPoints(0, loop);
+			} catch (Exception e) {
+				//e.printStackTrace();
+				beep = null;
+				return;
+			}
+			int volume = 50;
+			s = props.getProperty("adm3a_beep_volume");
+			if (s != null) {
+				volume = Integer.valueOf(s);
+				if (volume < 0) volume = 0;
+				if (volume > 100) volume = 100;
+			}
+			FloatControl vol = null;
+			if (beep.isControlSupported(FloatControl.Type.MASTER_GAIN)) {
+				vol = (FloatControl)beep.getControl(FloatControl.Type.MASTER_GAIN);
+			} else if (beep.isControlSupported(FloatControl.Type.VOLUME)) {
+				vol = (FloatControl)beep.getControl(FloatControl.Type.VOLUME);
+			}
+			if (vol != null) {
+				float min = vol.getMinimum();
+				float max = vol.getMaximum();
+				float gain = (float)(min + ((max - min) * (volume / 100.0)));
+				vol.setValue(gain);
+			}
+		}
+
+		// TODO: race condition: ding() and actionPerformed()
+		// race such that ding() restarts timer and audio but then
+		// actionPerformed() cancels it.
+		public synchronized void ding() {
+			timer.removeActionListener(this);
+			timer.addActionListener(this);
+			timer.restart();
+			if (!beep.isActive()) {
+				beep.loop(Clip.LOOP_CONTINUOUSLY);
+			}
+		}
+
+		public void actionPerformed(ActionEvent e) {
+			if (e.getSource() != timer) {
+				return;
+			}
+			synchronized(this) {
+				timer.removeActionListener(this);
+				beep.stop();
+				beep.flush();
+				beep.setFramePosition(0);
+			}
+		}
+	}
+
 	public ADM3A(Properties props, ASR33Container fe) {
 		super(title + " - " + fe.getTitle());
 		this.fe = fe;
@@ -109,6 +186,7 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 		paste_cr_delay = 1000; // mS, wait after CR
 		_last = new File(System.getProperty("user.dir"));
 		paster = new Paster();
+		bell = new Bell(props);
 
 		getContentPane().setName("ADM3A Emulator");
 		getContentPane().setBackground(new Color(100, 100, 100));
@@ -163,8 +241,18 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 		mi.setActionCommand(".");
 		mu.add(mi);
 		mb.add(mu);
-		fe.addMenus(mb, main, this);
 
+		java.net.URL url;
+		url = this.getClass().getResource("adm3a_doc/help.html");
+		help = new GenericHelp("ADM3A Terminal Help", url);
+		mu = new JMenu("Help");
+		mi = new JMenuItem("Show Help", KeyEvent.VK_H);
+		mi.addActionListener(this);
+		mi.setActionCommand(".");
+		mu.add(mi);
+		mb.add(mu);
+
+		fe.addMenus(mb, main, this);
 		setJMenuBar(mb);
 
 		// bug in openjdk? does not remember current position
@@ -179,7 +267,6 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 
 		pack();
 
-		setupBeep(props);
 		reset();
 		restart();
 	}
@@ -261,58 +348,6 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 		pnl.add(pan);
 
 		return pnl;
-	}
-
-	private void setupBeep(Properties props) {
-		String s = props.getProperty("adm3a_beep");
-		if (s == null) {
-			s = "h19beep.wav";
-		} else if (s.length() == 0) {
-			_beep = null;
-			return;
-		}
-		String beep_wav = s;
-		try {
-			AudioInputStream wav =
-				AudioSystem.getAudioInputStream(
-					new BufferedInputStream(
-						this.getClass().getResourceAsStream(beep_wav)));
-			AudioFormat format = wav.getFormat();
-			DataLine.Info info = new DataLine.Info(Clip.class, format);
-			_beep = (Clip)AudioSystem.getLine(info);
-			_beep.open(wav);
-			//_beep.setLoopPoints(0, loop);
-		} catch (Exception e) {
-			//e.printStackTrace();
-			_beep = null;
-			return;
-		}
-		int volume = 50;
-		s = props.getProperty("adm3a_beep_volume");
-		if (s != null) {
-			volume = Integer.valueOf(s);
-			if (volume < 0) volume = 0;
-			if (volume > 100) volume = 100;
-		}
-		FloatControl vol = null;
-		if (_beep.isControlSupported(FloatControl.Type.MASTER_GAIN)) {
-			vol = (FloatControl)_beep.getControl(FloatControl.Type.MASTER_GAIN);
-		} else if (_beep.isControlSupported(FloatControl.Type.VOLUME)) {
-			vol = (FloatControl)_beep.getControl(FloatControl.Type.VOLUME);
-		}
-		if (vol != null) {
-			float min = vol.getMinimum();
-			float max = vol.getMaximum();
-			float gain = (float)(min + ((max - min) * (volume / 100.0)));
-			vol.setValue(gain);
-		}
-	}
-
-	private void beep() {
-		if (_beep != null) {
-			_beep.setFramePosition(0);
-			_beep.loop(0);
-		}
 	}
 
 	// is this ever called after ctor?
@@ -443,7 +478,7 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 				--curs_x;
 			}
 		} else if (c == 0x07) {	// ^G, BEL
-			beep();
+			bell.ding();
 		} else if (c == 0x0b) {	// ^K, VT (up)
 			if (curs_y > 0) {
 				--curs_y;
@@ -457,7 +492,7 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 		} else if (c == 0x1c) {	// ^\, RS (home)
 			need_wrap = false;
 			curs_x = 0;
-			curs_x = 0;
+			curs_y = 0;
 		} else if (c == 0x05) {	// ^E, ENQ (WRU) - send answerback
 			paster.addText(ansbak);
 			return;
@@ -587,6 +622,12 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 			copyScreen();
 			return;
 		}
+		if (m.getMnemonic() == KeyEvent.VK_H) {
+			if (help != null) {
+				help.setVisible(true);
+			}
+			return;
+		}
 	}
 
         public void keyTyped(KeyEvent e) { }
@@ -608,15 +649,33 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 			// Alt-C and Alt-V for copy/paste.
 			return;
 		}
-		if (c == 0xffff) { // just meta keys
-			return;
-		}
 		// Assume if CTRL is down, must be ^J not ENTER...
 		if (k == KeyEvent.VK_ENTER && (m & InputEvent.CTRL_DOWN_MASK) == 0) {
 			c = '\r';
 		}
 		if (k == KeyEvent.VK_BACK_SPACE && (m & InputEvent.SHIFT_DOWN_MASK) != 0) {
 			c = 0x7f;
+		}
+		if (k == KeyEvent.VK_DOWN) {
+			c = '\n';
+		}
+		if (k == KeyEvent.VK_UP) {
+			c = 0x0b;	// VT, ^K, '\v' in C
+		}
+		if (k == KeyEvent.VK_LEFT) {
+			c = '\b';
+		}
+		if (k == KeyEvent.VK_RIGHT) {
+			c = '\f';
+		}
+		if (k == KeyEvent.VK_HOME) {
+			c = 0x1c;	// ^\
+		}
+		if (k == KeyEvent.VK_DELETE && (m & InputEvent.SHIFT_DOWN_MASK) != 0) {
+			c = 0x1a;	// ^Z
+		}
+		if (c == 0xffff) { // special or meta keys
+			return;
 		}
 		if (c < 0x80) {
 			typeChar(c);
