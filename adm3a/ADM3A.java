@@ -157,7 +157,8 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 		mi.addActionListener(this);
 		mi.setActionCommand(".");
 		mu.add(mi);
-		mi = new JMenuItem("Save", KeyEvent.VK_S);
+		mi = new JMenuItem("Copy All", KeyEvent.VK_S);
+		mi.setAccelerator(KeyStroke.getKeyStroke('A', InputEvent.ALT_DOWN_MASK));
 		mi.addActionListener(this);
 		mi.setActionCommand(".");
 		mu.add(mi);
@@ -402,7 +403,6 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 
 	// Note: these are ASCII codes, not KeyPress events...
 	public void process_keychar(int c) {
-		crt.dragEnd();
 		c &= 0x7f;
 		if (c == 0x1b) {	// ^[, ESC
 			mode = modes.ESC;
@@ -500,13 +500,22 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 		setTitle(title + " - " + fe.getTitle());
 	}
 
-	private void copyFromTty() {
-		String s = crt.getSelectedText();
+	private void copyIt(String s) {
 		if (s == null) {
 			return;
 		}
 		StringSelection ss = new StringSelection(s);
 		Toolkit.getDefaultToolkit().getSystemClipboard().setContents(ss, null);
+	}
+
+	private void copyScreen() {
+		String s = crt.dumpScreen(-1);
+		copyIt(s);
+	}
+
+	private void copyFromCrt() {
+		String s = crt.getSelectedText();
+		copyIt(s);
 	}
 
 	private void pasteToTty() {
@@ -545,7 +554,6 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 		if (e.getButton() != MouseEvent.BUTTON2) {
 			return;
 		}
-		crt.dragEnd();
 		pasteToTty();
 	}
 	public void mouseEntered(MouseEvent e) { }
@@ -568,7 +576,7 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 			return;
 		}
 		if (m.getMnemonic() == KeyEvent.VK_C) {
-			copyFromTty();
+			copyFromCrt();
 			return;
 		}
 		if (m.getMnemonic() == KeyEvent.VK_V) {
@@ -576,18 +584,7 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 			return;
 		}
 		if (m.getMnemonic() == KeyEvent.VK_S) {
-//			File sav = pickFile("Save");
-//			if (sav != null) {
-//				try {
-//					FileOutputStream fo = new FileOutputStream(sav);
-//					fo.write(text.getText(0, carr).getBytes());
-//					fo.close();
-//					_last = sav;
-//					// TODO: tear off?
-//				} catch (Exception ee) {
-//					// ...
-//				}
-//			}
+			copyScreen();
 			return;
 		}
 	}
@@ -596,7 +593,7 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
         public void keyPressed(KeyEvent e) {
                 int c = e.getKeyChar();
                 int k = e.getKeyCode();
-  		int m = e.getModifiersEx();
+		int m = e.getModifiersEx();
 //System.err.format("KEY %02x (%x : %d : %d)\n", (int)c, m, l, k);
 		if (k == KeyEvent.VK_F12) {
 			paster.addText(ansbak);
@@ -614,11 +611,11 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 		if (c == 0xffff) { // just meta keys
 			return;
 		}
-  		// Assume if CTRL is down, must be ^J not ENTER...
-  		if (k == KeyEvent.VK_ENTER && (m & InputEvent.CTRL_MASK) == 0) {
+		// Assume if CTRL is down, must be ^J not ENTER...
+		if (k == KeyEvent.VK_ENTER && (m & InputEvent.CTRL_DOWN_MASK) == 0) {
 			c = '\r';
-  		}
-		if (k == KeyEvent.VK_BACK_SPACE && (m & InputEvent.SHIFT_MASK) != 0) {
+		}
+		if (k == KeyEvent.VK_BACK_SPACE && (m & InputEvent.SHIFT_DOWN_MASK) != 0) {
 			c = 0x7f;
 		}
 		if (c < 0x80) {

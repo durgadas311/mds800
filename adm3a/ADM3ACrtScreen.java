@@ -10,11 +10,9 @@ import java.awt.datatransfer.Transferable;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.StringSelection;
 import java.awt.datatransfer.Clipboard;
-import java.awt.datatransfer.FlavorListener;
-import java.awt.datatransfer.FlavorEvent;
 
 public class ADM3ACrtScreen extends JPanel
-		implements MouseListener, MouseMotionListener, FlavorListener {
+		implements MouseListener, MouseMotionListener {
 	String[] lines = new String[24];
 	private FontMetrics _fm;
 	private int _fa; //, _fd;
@@ -27,7 +25,6 @@ public class ADM3ACrtScreen extends JPanel
 	boolean drag = false;
 	Point dragStart;
 	Point dragStop;
-	int dragCount = 0;
 	static final Color highlight = new Color(100, 100, 120);
 
 	public Dimension getNormSize() {
@@ -78,7 +75,6 @@ public class ADM3ACrtScreen extends JPanel
 		setOpaque(true);
 		bd_width = 3;
 		addMouseListener(this);
-		// Toolkit.getDefaultToolkit().getSystemClipboard().addFlavorListener(this);
 	}
 
 	public void setFont(Font f) {
@@ -141,7 +137,14 @@ public class ADM3ACrtScreen extends JPanel
 			lines[x] = lines[x + 1];
 		}
 		lines[23] = String.format("%80s", "");
-		repaint();
+	}
+
+	private void _scrollUp(Point p) {
+		if (p.y > 0) {
+			--p.y;
+		} else {
+			p.x = 0;
+		}
 	}
 
 	public void clearScreen() {
@@ -164,9 +167,12 @@ public class ADM3ACrtScreen extends JPanel
 	public void scrollUp() {
 		// TODO: try to scroll selection?
 		_scrollUp(0);
-	}
-
-	public void scrollDown() {
+		if (drag) {
+			_scrollUp(dragStart);
+			_scrollUp(dragStop);
+			copyToClipboard();
+		}
+		repaint();
 	}
 
 	public void setCursor(int x, int y) {
@@ -257,15 +263,13 @@ public class ADM3ACrtScreen extends JPanel
 		return p;
 	}
 
-	public void dragEnd() {
-		if (!drag) {
+	private void copyToClipboard() {
+		if (dragStart.equals(dragStop)) {
+			drag = false;
 			return;
 		}
-		dragCount = 0;
-		drag = false;
-		// TODO: preserve selection even if not visible?
-		dragStop = dragStart = new Point(0, 0);
-		repaint();
+		StringSelection ss = new StringSelection(getRegion(dragStart, dragStop));
+		Toolkit.getDefaultToolkit().getSystemClipboard().setContents(ss, null);
 	}
 
 	public String getSelectedText() {
@@ -283,7 +287,6 @@ public class ADM3ACrtScreen extends JPanel
 			return;
 		}
 		drag = true;
-		dragCount = 0;
 		dragStop = dragStart = charStart(e.getPoint());
 		addMouseMotionListener(this);
 	}
@@ -291,14 +294,9 @@ public class ADM3ACrtScreen extends JPanel
 		if (e.getButton() != MouseEvent.BUTTON1) {
 			return;
 		}
-		dragCount = 5;	// TODO: count down and do dragEnd()?
 		repaint();
 		removeMouseMotionListener(this);
-		if (dragStart.equals(dragStop)) {
-			return;
-		}
-		StringSelection ss = new StringSelection(getRegion(dragStart, dragStop));
-		Toolkit.getDefaultToolkit().getSystemClipboard().setContents(ss, null);
+		copyToClipboard();
 	}
 
 	public void mouseDragged(MouseEvent e) {
@@ -306,15 +304,4 @@ public class ADM3ACrtScreen extends JPanel
 		repaint();
 	}
 	public void mouseMoved(MouseEvent e) { }
-
-	public void flavorsChanged(FlavorEvent e) {
-//		String n = "?";
-//if (e.getSource() instanceof Clipboard) {
-//	Clipboard cb = (Clipboard)e.getSource();
-//	n = cb.getName();
-//} else {
-//	n = e.getSource().getClass().getName();
-//}
-//System.err.format("clipboard %s\n", n);
-	}
 }
