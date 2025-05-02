@@ -2,9 +2,11 @@
 
 import java.io.*;
 import java.util.Properties;
+import java.util.Arrays;
 import java.util.concurrent.Semaphore;
 import java.awt.*;
 import java.awt.event.*;
+import java.awt.geom.*;
 import javax.swing.*;
 import javax.swing.text.*;
 import javax.swing.border.*;
@@ -32,10 +34,14 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 	OutputStream odev;
 	Thread thrd;
 	JTextArea text;
+	FontMetrics fm;
+	int fh;
+	int fw;
 	JScrollPane scroll;
 	int carr;
 	int col;
-	int last_lf;
+	int bol;
+	int eol;
 	File _last = null;
 	GenericHelp _help;
 
@@ -170,6 +176,35 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 		}
 	};
 
+	class BlockCaret extends DefaultCaret {
+		static final Color shadow = new Color(50, 50, 50, 100);
+		public BlockCaret() {}
+
+		public void paint(Graphics g) {
+			JTextComponent comp = getComponent();
+			Rectangle2D r = null;
+			try {
+				r = comp.modelToView2D(getDot());
+			} catch(Exception ee) { }
+			if (r == null) return;
+			int x = (int)r.getX();
+			int y = (int)r.getY();
+			g.setColor(shadow);
+			g.fillRect(x, y, fw - 1, fh);
+		}
+
+		@Override
+		public void setDot(int dot, Position.Bias dotBias) {
+			// prevent cursor keys from changing caret
+			if (dot < carr) return;
+			super.setDot(dot, dotBias);
+		}
+
+		// prevent mouse from changing caret
+		@Override
+		protected void positionCaret(MouseEvent e) { }
+	};
+
 	public ASR33(Properties props, ASR33Container fe) {
 		super(title + " - " + fe.getTitle());
 		this.fe = fe;
@@ -213,7 +248,7 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 		}
 
 		java.net.URL url;
-		url = this.getClass().getResource("doc/help.html");
+		url = this.getClass().getResource("asr33_doc/help.html");
 		_help = new GenericHelp("ASR33 Teletype Help", url);
 
 		setLayout(new BorderLayout()); // allow resizing
@@ -221,7 +256,8 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 		text.setEditable(false); // this prevents caret... grrr.
 		text.setBackground(Color.white);
 		Font font = new Font("Monospaced", Font.PLAIN, 12);
-		text.setFont(font);
+		setupFont(font);
+		text.setCaret(new BlockCaret());
 		text.addKeyListener(this);
 		text.addMouseListener(this);
 		scroll = new JScrollPane(text);
@@ -346,6 +382,14 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 		restart();
 	}
 
+	private void setupFont(Font f) {
+		text.setFont(f);
+		fm = text.getFontMetrics(f);
+		//fa = fm.getAscent();
+		fw = fm.charWidth('M');
+		fh = fm.getHeight();
+	}
+
 	private synchronized void restart() {
 		setTitle(title + " - " + fe.getTitle());
 		idev = fe.getInputStream();
@@ -394,10 +438,47 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 		}
 	}
 
+	private void newLine() {
+		bol = eol = carr;
+	}
+
+	// '\n' has been appended, and carr updated. col not changed.
+	private void lineFeed() {
+		bol = carr;
+		eol = bol + col;
+		if (col == 0) {
+			return;
+		}
+		byte[] b = new byte[col];
+		Arrays.fill(b, (byte)' ');
+		text.append(new String(b));
+		carr += col;
+	}
+
+	// printable characters only
+	private void addChar(int c) {
+		String s = new String(new char[]{(char)c});
+		if (carr < eol) {
+			text.replaceRange(s, carr, carr+1);
+		} else {
+			text.append(s);
+			++eol;
+		}
+		++carr;
+		if (++col >= 80) {
+			col = 0;
+			text.append("\n"); // in this case, we want CR/LF
+			++carr;
+			newLine();
+		}
+		text.setCaretPosition(carr);
+	}
+
 	private void tearOff() {
-		text.setText("\u2588");
+		text.setText("");
 		carr = 0;
 		col = 0;
+		newLine();
 	}
 
 	private void rdrStart() {
@@ -435,17 +516,18 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 		}
 		switch (c) {
 		case '\n':	// LF
-			last_lf = carr;
-			text.insert("\n", carr++);
+			text.append("\n");
+			if (carr < eol) {
+				carr = eol;
+			}
+			++carr;
+			lineFeed();
 			text.setCaretPosition(carr);
-			// TODO: for now, treat as CR
-			col = 0;
 			break;
 		case '\r':	// CR
-// TODO: work out how to do CR...
-//			last_cr = carr;
-//			carr = last_lf;
-//			col = 0;
+			carr = bol;
+			col = 0;
+			text.setCaretPosition(carr);
 			break;
 		case DC2:	// P-ON
 			pun.setSelected(true);
@@ -484,13 +566,7 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 		if (c > 0x5f) {
 			return;
 		}
-		String s = new String(new char[]{(char)c});
-		text.insert(s, carr++);
-		if (++col >= 80) {
-			col = 0;
-			text.insert("\n", carr++);
-		}
-		text.setCaretPosition(carr);
+		addChar(c);
 	}
 
 	private File pickFile(String purpose) {

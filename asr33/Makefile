@@ -29,11 +29,11 @@ jar: $(JARS)
 # Need to exclude ASR33serial.class...
 ASR33telnet.jar: $(CLASSES) $(SIM_CLASS) $(DOCS)
 	echo "Main-Class: ASR33telnet" >Manifest.txt
-	jar -cmf Manifest.txt $@ *.class doc
+	jar -cmf Manifest.txt $@ *.class asr33_doc
 
 # Need to exclude ASR33telnet.class...
 ASR33plugin.jar: $(CLASSES) $(DOCS)
-	jar -cMf $@ ASR33*.class doc
+	jar -cMf $@ ASR33*.class asr33_doc
 
 ship: jar
 	rsync -Wuv ASR33telnet.jar ../bin
