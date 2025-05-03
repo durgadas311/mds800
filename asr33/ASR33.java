@@ -188,7 +188,7 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 			fifo = new java.util.concurrent.LinkedBlockingDeque<Integer>();
 			String s = props.getProperty("asr33_bell");
 			if (s == null) {
-				s = "ding.wav";
+				s = "bell.wav";
 			} else if (s.length() == 0) {
 				line = null;
 				return;
@@ -236,6 +236,9 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 				System.err.format("ASR33:Bell: no volume control\n");
 			}
 			Thread t = new Thread(this);
+//			try {
+//				t.setPriority(Thread.MAX_PRIORITY);
+//			} catch (Exception ee) { }
 			t.start();
 		}
 
@@ -255,10 +258,10 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 					// at most we block for 1 frame
 					while (fifo.size() == 0 && idx < max) {
 						n = frame;
-						line.write(buf, idx, n);
 						if (idx == 0) {
 							line.start();
 						}
+						line.write(buf, idx, n);
 						idx += n;
 					}
 					line.stop();
@@ -304,7 +307,6 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 		this.fe = fe;
 		idev = fe.getInputStream();
 		odev = fe.getOutputStream();
-		ansbak = new byte[20];
 		paste_delay = 100; // mS, 10 char/sec
 		paste_cr_delay = 1000; // mS, wait after CR
 		rdr_adv_char = RDR;
@@ -316,9 +318,7 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 		getContentPane().setBackground(new Color(100, 100, 100));
 
 		String s = props.getProperty("asr33_ansbak");
-		if (s != null) {
-			setAnswerBack(s);
-		}
+		setAnswerBack(s);
 		s = props.getProperty("asr33_delay");
 		if (s != null) {
 			paste_delay = Integer.valueOf(s);
@@ -511,7 +511,15 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 	}
 
 	private void setAnswerBack(String s) {
+		if (s == null) {
+			ansbak = new byte[20]; // full of NULs
+			return;
+		}
+		// answerback drum allows for character suppression,
+		// so only use as many characters as supplied.
+		// maximum is 20, though.
 		byte[] n = s.getBytes();
+		byte[] d = new byte[20];
 		int y = 0;
 		for (int x = 0; x < n.length && y < 20; ++x) {
 			byte c = n[x];
@@ -529,8 +537,9 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 					}
 				}
 			}
-			ansbak[y++] = c;
+			d[y++] = c;
 		}
+		ansbak = Arrays.copyOf(d, y);
 	}
 
 	private void newLine() {
@@ -565,6 +574,9 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 			text.append("\n"); // in this case, we want CR/LF
 			++carr;
 			newLine();
+		}
+		if (col == 73) {
+			bell.ding();
 		}
 		text.setCaretPosition(carr);
 	}
@@ -646,6 +658,11 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 			}
 			break;
 		case WRU:
+			// reader is stopped during answerback,
+			// and not automatically started.
+			if (rdr.isSelected()) {
+				rdrStop();
+			}
 			paster.addText(ansbak);
 			break;
 		}

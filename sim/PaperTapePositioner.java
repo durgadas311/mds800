@@ -111,8 +111,8 @@ public class PaperTapePositioner extends JFrame
 	// newIdx already validated (0 <= newIdx < tot)
 	private void cacheTape(int newIdx) {
 		int pos = newIdx - buf;
-		int _beg = 0;
-		int _end = win;
+		int _beg = 0;		// assume full window
+		int _end = win;		//
 
 		if (newIdx == idx) {
 			return;
@@ -121,8 +121,8 @@ public class PaperTapePositioner extends JFrame
 			_beg = -pos;
 			pos = 0;
 		}
-		if (pos + _end > tot) {
-			_end = tot - pos;
+		if (pos + (_end - _beg) > tot) {
+			_end = _beg + (tot - pos);
 		}
 		try {
 			tape.seek(pos);
