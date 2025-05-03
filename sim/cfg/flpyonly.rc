@@ -1,7 +1,7 @@
 # Minimal system to run DRI 20K CP/M 2.2 distro
 
 mds800_ram = 20
-crt_att = H19Serial CRT
+crt_att = ADM3ASerial CRT
 tty_att = ASR33Serial TTY
 
 mds800_fdc = yes
