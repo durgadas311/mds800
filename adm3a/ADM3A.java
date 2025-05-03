@@ -114,12 +114,11 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 				return;
 			}
 			String beep_wav = s;
-			// TODO: look for file first...
 			try {
+				InputStream is = SimResource.open(this, beep_wav);
 				AudioInputStream wav =
 					AudioSystem.getAudioInputStream(
-						new BufferedInputStream(
-							this.getClass().getResourceAsStream(beep_wav)));
+						new BufferedInputStream(is));
 				AudioFormat format = wav.getFormat();
 				DataLine.Info info = new DataLine.Info(Clip.class, format);
 				beep = (Clip)AudioSystem.getLine(info);

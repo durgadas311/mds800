@@ -194,12 +194,11 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 				return;
 			}
 			String bell_wav = s;
-			// TODO: look for file first...
 			try {
+				InputStream is = SimResource.open(this, bell_wav);
 				AudioInputStream wav =
 					AudioSystem.getAudioInputStream(
-						new BufferedInputStream(
-							this.getClass().getResourceAsStream(bell_wav)));
+						new BufferedInputStream(is));
 				AudioFormat format = wav.getFormat();
 				//frame = (int)wav.getFrameLength();
 				buf = new byte[wav.available()];

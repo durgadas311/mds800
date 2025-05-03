@@ -50,17 +50,10 @@ public class ADM3ACrtScreen extends JPanel
 		setForeground(fc);
 		Font font = null;
 		try {
-			File ff = new File(f);
 			java.io.InputStream ttf;
-			if (ff.exists()) {
-				ttf = new FileInputStream(ff);
-			} else {
-				ttf = this.getClass().getResourceAsStream(f);
-			}
-			if (ttf != null) {
-				font = Font.createFont(Font.TRUETYPE_FONT, ttf);
-				font = font.deriveFont(_fz);
-			}
+			ttf = SimResource.open(this, f);
+			font = Font.createFont(Font.TRUETYPE_FONT, ttf);
+			font = font.deriveFont(_fz);
 		} catch (Exception ee) {
 			font = null;
 		}
