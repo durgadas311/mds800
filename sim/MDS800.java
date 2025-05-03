@@ -36,6 +36,12 @@ public class MDS800 implements MDS800Commander, Computer, Runnable {
 	private CPUTracer trc;
 	private ReentrantLock cpuLock;
 
+	public static final int[] baudClks = {
+		//  J1      J2      J3     J4     J5     J6    J7
+		614400, 307200, 153600, 76800, 38400, 19200, 1760 };
+		//9600    4800    2400   1200    600    300     *    @64X (CRT)
+		//   *       *    9600   4800   2400   1200   110    @16X (TTY)
+
 	class IOIntCtrl implements IODevice {
 		MDSFrontPanel fp;
 		public IOIntCtrl(MDSFrontPanel fp) { this.fp = fp; }
@@ -94,10 +100,10 @@ public class MDS800 implements MDS800Commander, Computer, Runnable {
 		addDevice(fp);
 		addDevice(new IOIntCtrl(fp));
 		// TODO: InterruptController...
-		INS8251 tty = new INS8251(props, "tty", 0xf4, 3, fp);
+		INS8251 tty = new INS8251(props, "tty", 0xf4, 3, baudClks[6], fp);
 		addDevice(tty);
 		addFrame(tty); // may not have a frame
-		INS8251 crt = new INS8251(props, "crt", 0xf6, 3, fp);
+		INS8251 crt = new INS8251(props, "crt", 0xf6, 3, baudClks[0], fp);
 		addDevice(crt);
 		addFrame(crt); // may not have a frame
 
@@ -117,6 +123,8 @@ public class MDS800 implements MDS800Commander, Computer, Runnable {
 			PaperTape pt = new PaperTape(props, 0xf8, 3, fp, tty);
 			addDevice(pt);
 			fp.addPanel(pt);
+		} else {
+			addDevice(new DummyPaperTape(props, 0xf8, tty));
 		}
 		s = props.getProperty("mds800_upp");
 		if (s != null && s.equalsIgnoreCase("yes")) {

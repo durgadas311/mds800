@@ -125,8 +125,8 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 				beep = (Clip)AudioSystem.getLine(info);
 				beep.open(wav);
 				//beep.setLoopPoints(0, loop);
-			} catch (Exception e) {
-				//e.printStackTrace();
+			} catch (Exception ee) {
+				ee.printStackTrace();
 				beep = null;
 				return;
 			}
@@ -148,6 +148,8 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 				float max = vol.getMaximum();
 				float gain = (float)(min + ((max - min) * (volume / 100.0)));
 				vol.setValue(gain);
+			} else {
+				System.err.format("ADM3A:Bell: no volume control\n");
 			}
 		}
 

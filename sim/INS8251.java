@@ -55,27 +55,33 @@ public class INS8251 implements IODevice, VirtualUART, PeripheralContainer {
 	private boolean excl = true;
 	private long lastTx = 0;
 	private long lastRx = 0;
-	private int clock = 154000;	// Hz, both TxC and RxC
+	private int clock;	// Hz, both TxC and RxC
 	private long nanoBaud = 0; // length of char in nanoseconds
 	private int bits; // bits per character
 
 	public INS8251(Properties props, String pfx, int base, int irq,
-			Interruptor intr) {
+			int clk, Interruptor intr) {
 		prefix = pfx;
 		name = pfx.toUpperCase() + "_INS8251";
 		attObj = null;
 		attFile = null;
 		attInFile = null;
 		this.intr = intr;
+		clock = clk;
 		String s;
 		// src = intr.registerINT(irq);
 		basePort = base;
-		// TODO: simulate divider straps?
 		s = props.getProperty(pfx + "_clock");
 		if (s != null) {
-			int i = Integer.valueOf(s);
-			if (i > 0 && i <= 154000) {
-				clock = i;
+			// divider straps...
+			if (s.matches("^[Jj][1-7]$")) {
+				int i = Integer.valueOf(s.substring(1));
+				clock = MDS800.baudClks[i - 1];
+			} else { // raw clock freq
+				int i = Integer.valueOf(s);
+				if (i > 1760 && i <= 614400) {
+					clock = i;
+				}
 			}
 		}
 		fifo = new java.util.concurrent.LinkedBlockingDeque<Integer>();
@@ -328,6 +334,10 @@ public class INS8251 implements IODevice, VirtualUART, PeripheralContainer {
 					// probably already set
 					MSR |= MSR_TXR;
 				}
+				chkIntr();
+			} else {
+				lastTx = System.nanoTime();
+				MSR &= ~(MSR_TXE | MSR_TXR); // can't differentiate
 				chkIntr();
 			}
 			break;

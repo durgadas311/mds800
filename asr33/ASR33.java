@@ -7,6 +7,7 @@ import java.util.concurrent.Semaphore;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.*;
+import javax.sound.sampled.*;
 import javax.swing.*;
 import javax.swing.text.*;
 import javax.swing.border.*;
@@ -70,6 +71,7 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 	Reader reader;
 	Paster paster;
 	int rdr_adv_char;
+	Bell bell;
 
 	class Paster implements Runnable {
 		Thread thr;
@@ -176,6 +178,99 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 		}
 	};
 
+	class Bell implements Runnable {
+		java.util.concurrent.LinkedBlockingDeque<Integer> fifo;
+		SourceDataLine line;
+		byte[] buf;
+		int frame;
+
+		public Bell(Properties props) {
+			fifo = new java.util.concurrent.LinkedBlockingDeque<Integer>();
+			String s = props.getProperty("asr33_bell");
+			if (s == null) {
+				s = "ding.wav";
+			} else if (s.length() == 0) {
+				line = null;
+				return;
+			}
+			String bell_wav = s;
+			// TODO: look for file first...
+			try {
+				AudioInputStream wav =
+					AudioSystem.getAudioInputStream(
+						new BufferedInputStream(
+							this.getClass().getResourceAsStream(bell_wav)));
+				AudioFormat format = wav.getFormat();
+				//frame = (int)wav.getFrameLength();
+				buf = new byte[wav.available()];
+				wav.read(buf);
+				wav.close();
+
+				DataLine.Info info = new DataLine.Info(
+					SourceDataLine.class, format);
+				line = (SourceDataLine)AudioSystem.getLine(info);
+				line.open(format);
+				frame = format.getFrameSize();
+			} catch (Exception e) {
+				e.printStackTrace();
+				return;
+			}
+			int volume = 50;
+			s = props.getProperty("asr33_bell_volume");
+			if (s != null) {
+				volume = Integer.valueOf(s);
+				if (volume < 0) volume = 0;
+				if (volume > 100) volume = 100;
+			}
+			FloatControl vol = null;
+			if (line.isControlSupported(FloatControl.Type.MASTER_GAIN)) {
+				vol = (FloatControl)line.getControl(FloatControl.Type.MASTER_GAIN);
+			} else if (line.isControlSupported(FloatControl.Type.VOLUME)) {
+				vol = (FloatControl)line.getControl(FloatControl.Type.VOLUME);
+			}
+			if (vol != null) {
+				float min = vol.getMinimum();
+				float max = vol.getMaximum();
+				float gain = (float)(min + ((max - min) * (volume / 100.0)));
+				vol.setValue(gain);
+			} else {
+				System.err.format("ASR33:Bell: no volume control\n");
+			}
+			Thread t = new Thread(this);
+			t.start();
+		}
+
+		public void ding() {
+			if (line == null) return;
+			fifo.add(0);
+		}
+
+		public void run() {
+			int idx;
+			int max = buf.length - frame;
+			int n;
+
+			while (true) {
+				try {
+					idx = fifo.take(); // usually/always "0"
+					// at most we block for 1 frame
+					while (fifo.size() == 0 && idx < max) {
+						n = frame;
+						line.write(buf, idx, n);
+						if (idx == 0) {
+							line.start();
+						}
+						idx += n;
+					}
+					line.stop();
+					line.flush();
+				} catch (Exception ee) {
+					ee.printStackTrace();
+				}
+			}
+		}
+	}
+
 	class BlockCaret extends DefaultCaret {
 		static final Color shadow = new Color(50, 50, 50, 100);
 		public BlockCaret() {}
@@ -216,6 +311,7 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 		rdr_adv_char = RDR;
 		paster = new Paster();
 		reader = new Reader();
+		bell = new Bell(props);
 		_last = new File(System.getProperty("user.dir"));
 		getContentPane().setName("ASR33 Emulator");
 		getContentPane().setBackground(new Color(100, 100, 100));
@@ -528,6 +624,11 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 			carr = bol;
 			col = 0;
 			text.setCaretPosition(carr);
+			break;
+		case 0x07:	// BEL
+			if (bell != null) {
+				bell.ding();
+			}
 			break;
 		case DC2:	// P-ON
 			pun.setSelected(true);

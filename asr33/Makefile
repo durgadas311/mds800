@@ -14,7 +14,7 @@ SIM_CLASS = GenericHelp.class \
 	SuffFileFilter.class \
 	VirtualUART.class
 
-DOCS = $(wildcard doc/*.html)
+AUXS = $(wildcard asr33_doc/*) $(wildcard *.wav)
 
 all: $(CLASSES)
 
@@ -27,13 +27,13 @@ all: $(CLASSES)
 jar: $(JARS)
 
 # Need to exclude ASR33serial.class...
-ASR33telnet.jar: $(CLASSES) $(SIM_CLASS) $(DOCS)
+ASR33telnet.jar: $(CLASSES) $(SIM_CLASS) $(AUXS)
 	echo "Main-Class: ASR33telnet" >Manifest.txt
-	jar -cmf Manifest.txt $@ *.class asr33_doc
+	jar -cmf Manifest.txt $@ *.class $(AUXS)
 
 # Need to exclude ASR33telnet.class...
-ASR33plugin.jar: $(CLASSES) $(DOCS)
-	jar -cMf $@ ASR33*.class asr33_doc
+ASR33plugin.jar: $(CLASSES) $(AUXS)
+	jar -cMf $@ ASR33*.class $(AUXS)
 
 ship: jar
 	rsync -Wuv ASR33telnet.jar ../bin
