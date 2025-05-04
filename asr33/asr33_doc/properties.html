@@ -8,6 +8,19 @@
 commandline by removing the prefix.
 Quotes around values may be required, depending on your shell.
 
+<P>The terminal will search for properties
+in the following order:
+
+<OL>
+<LI><I>prop</I>=<I>value</I> arguments on the commandline
+<LI>The first existing file on the commandline
+<LI>Using the environment variable ASR33_CONFIG
+<LI>Looking for "asr33rc" in the current directory
+<LI>Looking for ".asr33rc" in the user's home directory
+</OL>
+
+<P>Only one proerties file will be used - they are not combined.
+
 <DL>
 <DT>asr33_ansbak
 <DD>Specifies a string to use for the Answer-back drum.
@@ -46,6 +59,52 @@ Default is "bell.wav".
 <DT>asr33_bell_volume
 <DD>Specifies the audio volume to use for the bell,
 in percent. Default is "50".
+</DD>
+</DL>
+
+<H3>ASR33 Legacy Option Properties</H3>
+
+<P>The following properties accept the values (case-insensitive)
+"yes", "true", "on", or "1" to enable an option.
+All other values disable.
+If the property is not set, the default value is used.
+
+<DL>
+<DT>asr33_auto_nl
+<DD>Enables the atuomatic CR-LF at column 80.
+Default is on.
+</DD>
+<DT>asr33_auto_rdr
+<DD>Enables the paper tape reader to respond to DC1/DC3.
+Default is on.
+</DD>
+<DT>asr33_auto_pun
+<DD>Enables the paper tape punch to respond to DC2/DC4.
+Default is on.
+</DD>
+<DT>asr33_cr_on_lf
+<DD>Enables the atuomatic CR when LF is received.
+Default is off.
+</DD>
+<DT>asr33_lf_on_cr
+<DD>Enables the atuomatic LF when CR is received.
+Mutually exclusive with 'asr33_cr_on_lf'.
+Default is off.
+</DD>
+<DT>asr33_nonprint
+<DD>Enables the Print/Nonprint option, which adds a button
+to control whether or not received characters are printed
+(they are always punched if the punch is on).
+Default is off.
+</DD>
+<DT>asr33_parity
+<DD>Enables generation of parity in the 8th bit of keyboard codes.
+Default is off.
+</DD>
+<DT>asr33_even
+<DD>Selects the state of the 8th bit of keyboard codes.
+Default is on when parity is enabled (EVEN parity),
+off when parity disabled (SPACE parity bit).
 </DD>
 </DL>
 

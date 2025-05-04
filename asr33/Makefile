@@ -13,7 +13,9 @@ SIM_CLASS = GenericHelp.class \
 	SuffFileChooser.class \
 	SuffFileFilter.class \
 	VirtualUART.class \
-	SimResource.class
+	SimResource.class \
+	ExtBoolean.class \
+	ParityGenerator.class
 
 AUXS = $(wildcard asr33_doc/*) $(wildcard *.wav)
 

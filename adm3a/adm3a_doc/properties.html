@@ -8,15 +8,18 @@
 commandline by removing the prefix.
 Quotes around values may be required, depending on your shell.
 
-<P>The terminal will search for a file containing properties
+<P>The terminal will search for properties
 in the following order:
 
 <OL>
+<LI><I>prop</I>=<I>value</I> arguments on the commandline
 <LI>The first existing file on the commandline
 <LI>Using the environment variable ADM3A_CONFIG
 <LI>Looking for "adm3arc" in the current directory
 <LI>Looking for ".adm3arc" in the user's home directory
 </OL>
+
+<P>Only one proerties file will be used - they are not combined.
 
 <DL>
 <DT>adm3a_ansbak
@@ -73,6 +76,46 @@ No value is require, however when specifying on the
 commandline it must include the "=".
 </DD>
 
+</DL>
+
+<H3>ADM3A Legacy Option Properties</H3>
+
+<P>The following properties accept the values (case-insensitive)
+"yes", "true", "on", or "1" to enable an option.
+All other values disable.
+If the property is not set, the default value is used.
+
+<DL>
+<DT>adm3a_auto_nl
+<DD>Enables the atuomatic CR-LF at column 80.
+Default is on.
+</DD>
+<DT>adm3a_uc_only
+<DD>Forces all key presses to upper case.
+Default is off.
+</DD>
+<DT>adm3a_uc_disp
+<DD>Forces all characters displayed to upper case.
+Default is off.
+</DD>
+<DT>adm3a_clr_scr
+<DD>Enables the CLEAR SCREEN function.
+Default is on.
+</DD>
+<DT>adm3a_ndspace
+<DD>Enables the non-destructive space option.
+Not implemented.
+Default is off.
+</DD>
+<DT>adm3a_pe
+<DD>Enables generation of parity in the 8th bit of key codes sent.
+Default is off.
+</DD>
+<DT>adm3a_ep
+<DD>Selects the state of the 8th bit of keyboard codes.
+Default is on when parity is enabled (EVEN parity),
+off when parity disabled (SPACE parity bit).
+</DD>
 </DL>
 
 <H3>ADM3A Telnet Properties</H3>

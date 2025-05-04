@@ -47,6 +47,7 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 	GenericHelp _help;
 
 	JCheckBox local;
+	JCheckBox noprt;
 	JCheckBox pun;
 	JLabel pun_cnt;
 	int pun_bytes;
@@ -72,6 +73,15 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 	Paster paster;
 	int rdr_adv_char;
 	Bell bell;
+
+	boolean auto_nl;
+	boolean auto_rdr;
+	boolean auto_pun;
+	boolean cr_on_lf;
+	boolean lf_on_cr;
+	boolean nonprint;
+	boolean parity;
+	boolean even;
 
 	class Paster implements Runnable {
 		Thread thr;
@@ -342,6 +352,35 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 			if (rdr_view > 30) rdr_view = 30; // what is practical...
 		}
 
+		// various teletype options
+		auto_nl = true;
+		auto_rdr = true;
+		auto_pun = true;
+		cr_on_lf = false;
+		lf_on_cr = false;
+		nonprint = false;
+		parity = false;
+		even = false;	// default to SPACE if no parity
+		s = props.getProperty("asr33_auto_nl"); // "wrap" at EOL
+		if (s != null) auto_nl = ExtBoolean.parseBoolean(s);
+		s = props.getProperty("asr33_auto_rdr"); // reader via DC1/DC3
+		if (s != null) auto_rdr = ExtBoolean.parseBoolean(s);
+		s = props.getProperty("asr33_auto_pun"); // punch via DC1/DC4
+		if (s != null) auto_pun = ExtBoolean.parseBoolean(s);
+		s = props.getProperty("asr33_cr_on_lf"); // recv LF forces CR
+		if (s != null) cr_on_lf = ExtBoolean.parseBoolean(s);
+		s = props.getProperty("asr33_lf_on_cr"); // recv CR forces LF
+		if (s != null) lf_on_cr = ExtBoolean.parseBoolean(s);
+		s = props.getProperty("asr33_nonprint"); // print disable button
+		if (s != null) nonprint = ExtBoolean.parseBoolean(s);
+		s = props.getProperty("asr33_pe"); // parity enable
+		if (s != null) parity = ExtBoolean.parseBoolean(s);
+		if (parity) {
+			even = true; // default to EVEN parity
+		}
+		s = props.getProperty("adm3a_ep"); // parity even (if enabled)
+		if (s != null) even = ExtBoolean.parseBoolean(s);
+
 		java.net.URL url;
 		url = this.getClass().getResource("asr33_doc/help.html");
 		_help = new GenericHelp("ASR33 Teletype Help", url);
@@ -416,6 +455,17 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 		pn.setPreferredSize(new Dimension(5, 30));
 		pn.setOpaque(false);
 		mb.add(pn);
+		// this must always exist, just maybe not visible
+		noprt = new JCheckBox("NPRINT");
+		noprt.setFocusable(false);
+		noprt.setOpaque(false);
+		if (nonprint) {
+			mb.add(noprt);
+			pn = new JPanel();
+			pn.setPreferredSize(new Dimension(5, 30));
+			pn.setOpaque(false);
+			mb.add(pn);
+		}
 		local = new JCheckBox("LOCAL");
 		local.setFocusable(false);
 		//local.addActionListener(this);
@@ -559,8 +609,24 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 		carr += col;
 	}
 
+	private void doLineFeed() {
+		text.append("\n");
+		if (carr < eol) {
+			carr = eol;
+		}
+		++carr;
+		if (cr_on_lf) {
+			col = 0; // bypasses messy part of lineFeed()
+		}
+		lineFeed();
+		text.setCaretPosition(carr);
+	}
+
 	// printable characters only
 	private void addChar(int c) {
+		if (noprt.isSelected()) {
+			return;
+		}
 		String s = new String(new char[]{(char)c});
 		if (carr < eol) {
 			text.replaceRange(s, carr, carr+1);
@@ -568,12 +634,17 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 			text.append(s);
 			++eol;
 		}
-		++carr;
-		if (++col >= 80) {
+		if (col < 79) {
+			++carr;
+			++col;
+		} else if (auto_nl) {
+			++carr;
 			col = 0;
 			text.append("\n"); // in this case, we want CR/LF
 			++carr;
 			newLine();
+		} else {
+			// stay where we are
 		}
 		if (col == 73) {
 			bell.ding();
@@ -623,17 +694,15 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 		}
 		switch (c) {
 		case '\n':	// LF
-			text.append("\n");
-			if (carr < eol) {
-				carr = eol;
-			}
-			++carr;
-			lineFeed();
-			text.setCaretPosition(carr);
+			doLineFeed();
 			break;
 		case '\r':	// CR
-			carr = bol;
 			col = 0;
+			if (lf_on_cr) {
+				doLineFeed();
+				break;
+			}
+			carr = bol;
 			text.setCaretPosition(carr);
 			break;
 		case 0x07:	// BEL
@@ -642,24 +711,29 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 			}
 			break;
 		case DC2:	// P-ON
-			pun.setSelected(true);
+			if (auto_pun) {
+				pun.setSelected(true);
+			}
 			break;
 		case DC1:	// X-ON
-			if (rdr.isSelected()) {
+			if (auto_rdr && rdr.isSelected()) {
 				rdrStart();
 			}
 			break;
 		case DC4:	// P-OFF
-			pun.setSelected(false);
+			if (auto_pun) {
+				pun.setSelected(false);
+			}
 			break;
 		case DC3:	// X-OFF
-			if (rdr.isSelected()) {
+			if (auto_rdr && rdr.isSelected()) {
 				rdrStop();
 			}
 			break;
 		case WRU:
 			// reader is stopped during answerback,
 			// and not automatically started.
+			// TODO: only if auto_rdr?
 			if (rdr.isSelected()) {
 				rdrStop();
 			}
@@ -672,6 +746,7 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 		if (pun.isSelected()) {
 			punChar(c);
 		}
+		c &= 0x7f; // TODO: check parity? then what?
 		if (c < ' ') {
 			ctrlChar(c);
 			return;
@@ -770,6 +845,12 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 		if (c >= '`' && c < 0x7f) {
 			c &= 0x5f;
 		}
+		// only the keyboard generates parity (paper tape already has it)
+		if (parity) {
+			c = ParityGenerator.parity(c, even);
+		} else {
+			c = ParityGenerator.noParity(c, even);
+		}
 		typeChar(c);
 	}
 	public void keyReleased(KeyEvent e) {}
@@ -855,7 +936,7 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 			if (sav != null) {
 				try {
 					FileOutputStream fo = new FileOutputStream(sav);
-					fo.write(text.getText(0, carr).getBytes());
+					fo.write(text.getText(0, eol).getBytes());
 					fo.close();
 					_last = sav;
 					// TODO: tear off?

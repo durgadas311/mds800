@@ -49,7 +49,7 @@ public class PaperTapePositioner extends JFrame
 				RenderingHints.VALUE_ANTIALIAS_ON));
 			t = (win - end) * cell;
 			b = (win - beg) * cell;
-			m = marg - 5;
+			m = marg / 2 + cell - data / 2;
 			g2d.setColor(buff);	// paper tape
 			// only draw amount of tape present
 			g2d.fillRect(marg / 2, t, tapew, (end - beg) * cell);

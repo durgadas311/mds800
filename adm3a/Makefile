@@ -8,7 +8,11 @@ JAVAS = ADM3A.java ADM3ACrtScreen.java ADM3Atelnet.java ADM3ASerial.java \
 	BezelRoundedRectangle.java
 CLASSES = $(subst .java,.class,$(JAVAS))
 JARS = ADM3Atelnet.jar ADM3Aplugin.jar
-SIM_CLASS = VirtualUART.class GenericHelp.class SimResource.class
+SIM_CLASS = VirtualUART.class \
+	GenericHelp.class \
+	SimResource.class \
+	ExtBoolean.class \
+	ParityGenerator.class
 
 AUXS = $(wildcard adm3a_doc/*) $(wildcard fonts/*.ttf) $(wildcard *.wav)
 

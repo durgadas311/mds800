@@ -48,6 +48,14 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 	Bell bell;
 	OutputStream log = null;
 
+	boolean auto_nl;
+	boolean uc_only;
+	boolean uc_disp;
+	boolean clr_scr;
+	boolean ndspace;
+	boolean parity;
+	boolean even;
+
 	class Paster implements Runnable {
 		Thread thr;
 		java.util.concurrent.LinkedBlockingDeque<String> fifo;
@@ -220,6 +228,31 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 		if (s != null) {
 			paste_cr_delay = Integer.valueOf(s);
 		}
+		// various terminal options
+		auto_nl = true;
+		uc_only = false;	// keyboard codes (alpha only)
+		uc_disp = false;	// displayed characters (alpha only)
+		clr_scr = true;
+		ndspace = false;	// non-destructive space
+		parity = false;
+		even = false;	// default to SPACE if no parity
+		s = props.getProperty("adm3a_auto_nl"); // "wrap" at EOL
+		if (s != null) auto_nl = ExtBoolean.parseBoolean(s);
+		s = props.getProperty("adm3a_uc_only"); // keyboard gen only UC
+		if (s != null) uc_only = ExtBoolean.parseBoolean(s);
+		s = props.getProperty("adm3a_uc_disp"); // display only UC
+		if (s != null) uc_disp = ExtBoolean.parseBoolean(s);
+		s = props.getProperty("adm3a_clr_scr"); // enable CLEAR SCREEN
+		if (s != null) clr_scr = ExtBoolean.parseBoolean(s);
+		s = props.getProperty("adm3a_ndspace"); // non-destructive space (*)
+		if (s != null) ndspace = ExtBoolean.parseBoolean(s);
+		s = props.getProperty("adm3a_pe");
+		if (s != null) parity = ExtBoolean.parseBoolean(s);
+		if (parity) {
+			even = true;	// default to EVEN parity
+		}
+		s = props.getProperty("adm3a_ep");
+		if (s != null) even = ExtBoolean.parseBoolean(s);
 
 		JMenuBar mb = new JMenuBar();
 		JMenu mu = new JMenu("Screen");
@@ -437,7 +470,7 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 
 	// Note: these are ASCII codes, not KeyPress events...
 	public void process_keychar(int c) {
-		c &= 0x7f;
+		c &= 0x7f; // TODO: check parity? what if wrong?
 		if (c == 0x1b) {	// ^[, ESC
 			mode = modes.ESC;
 			return;
@@ -482,7 +515,7 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 			if (curs_x < 79) {
 				++curs_x;
 			}
-		} else if (c == 0x1a) {	// ^Z, SUB (clear)
+		} else if (c == 0x1a && clr_scr) {	// ^Z, SUB (clear)
 			crt.clearScreen();
 		} else if (c == 0x1c) {	// ^\, RS (home)
 			curs_x = 0;
@@ -494,11 +527,14 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 			// TODO: handle other Ctrl chars?
 			return;
 		} else {
+			if (uc_disp && c >= 'a' && c <= 'z') {
+				c &= 0x5f;
+			}
 			crt.putChar(c, curs_x, curs_y);
 			// TODO: beep at column 72, except if baud > 2400
 			if (curs_x < 79) {
 				++curs_x;
-			} else {
+			} else if (auto_nl) {
 				curs_x = 0;
 				doLinefeed();
 			}
@@ -563,9 +599,6 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 	private void typeChar(int c) {
 		if (loopback) {
 			process_keychar(c);
-			if (c == '\r' && loopback) {
-				process_keychar('\n');
-			}
 			return;
 		}
 		if (odev == null) {
@@ -673,6 +706,14 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 			return;
 		}
 		if (c < 0x80) {
+			if (uc_only && c >= 'a' && c <= 'z') {
+				c &= 0x5f;
+			}
+			if (parity) {
+				c = ParityGenerator.parity(c, even);
+			} else {
+				c = ParityGenerator.noParity(c, even);
+			}
 			typeChar(c);
 			e.consume();
 		}
