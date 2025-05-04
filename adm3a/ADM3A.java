@@ -35,8 +35,6 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 	ADM3ACrtScreen crt;
 	int curs_x;
 	int curs_y;
-	boolean wrap_mode;	// TODO?
-	boolean need_wrap;	// TODO?
 
 	modes mode;
 
@@ -446,11 +444,9 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 		}
 		if (mode == modes.ESC) {
 			if (c == '=') {
-				need_wrap = false;
 				mode = modes.SETCURS1;
 				return;
 			}
-			need_wrap = false;
 			mode = modes.NORMAL;
 			return;
 		} else if (mode == modes.SETCURS1) {
@@ -465,7 +461,6 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 		} else if (c == 0x0a) {	// ^J, LF
 			doLinefeed();
 		} else if (c == 0x0d) {	// ^M, CR
-			need_wrap = false;
 			curs_x = 0;
 		} else if (c == 0x09) {	// ^I, TAB - ignored?!
 			if (curs_x < 72) {
@@ -474,7 +469,6 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 				curs_x = 79;
 			}
 		} else if (c == 0x08) { // ^H, BS
-			need_wrap = false;
 			if (curs_x > 0) {
 				--curs_x;
 			}
@@ -491,7 +485,6 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 		} else if (c == 0x1a) {	// ^Z, SUB (clear)
 			crt.clearScreen();
 		} else if (c == 0x1c) {	// ^\, RS (home)
-			need_wrap = false;
 			curs_x = 0;
 			curs_y = 0;
 		} else if (c == 0x05) {	// ^E, ENQ (WRU) - send answerback
@@ -502,11 +495,12 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 			return;
 		} else {
 			crt.putChar(c, curs_x, curs_y);
-			need_wrap = false;
+			// TODO: beep at column 72, except if baud > 2400
 			if (curs_x < 79) {
 				++curs_x;
-			} else if (wrap_mode) {
-				need_wrap = true;
+			} else {
+				curs_x = 0;
+				doLinefeed();
 			}
 		}
 		crt.setCursor(curs_x, curs_y);
