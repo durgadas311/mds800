@@ -58,6 +58,8 @@ public class INS8251 implements IODevice, VirtualUART, PeripheralContainer {
 	private int clock;	// Hz, both TxC and RxC
 	private long nanoBaud = 0; // length of char in nanoseconds
 	private int bits; // bits per character
+	private boolean parity;
+	private boolean even;
 
 	public INS8251(Properties props, String pfx, int base, int irq,
 			int clk, Interruptor intr) {
@@ -308,6 +310,11 @@ public class INS8251 implements IODevice, VirtualUART, PeripheralContainer {
 		val &= 0xff; // necessary?
 		switch(off) {
 		case 0: // Tx Data
+			// assume SPACE if not parity?
+			if (parity && bits == 8) {
+				val &= 0x7f;
+				val = ParityGenerator.parity(val, even);
+			}
 			if (!canTx()) {
 				break;
 			}
@@ -366,8 +373,10 @@ public class INS8251 implements IODevice, VirtualUART, PeripheralContainer {
 		if ((val & 0x80) != 0) {
 			++bits;	// 1.5 or 2 stop bits...
 		}
-		if ((val & 0x10) != 0) {
+		parity = ((val & 0x10) != 0);
+		if (parity) {
 			++bits;	// parity bit
+			even = ((val & 0x20) != 0);
 		}
 		int f = 1;
 		switch (val & 0x03) {
