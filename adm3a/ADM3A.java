@@ -2,9 +2,10 @@
 
 // Implements overall ADM3A and Kayboard
 
-import java.io.*;
 import java.util.Properties;
+import java.util.Arrays;
 import java.util.concurrent.Semaphore;
+import java.io.*;
 import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
@@ -69,6 +70,9 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 		}
 
 		public void addText(byte[] txt) {
+			if (txt == null) {
+				return;
+			}
 			String s = new String(txt);
 			fifo.add(s);
 		}
@@ -171,16 +175,18 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 			}
 		}
 
+		public synchronized void cancel() {
+			timer.removeActionListener(this);
+			beep.stop();
+			beep.flush();
+			beep.setFramePosition(0);
+		}
+
 		public void actionPerformed(ActionEvent e) {
 			if (e.getSource() != timer) {
 				return;
 			}
-			synchronized(this) {
-				timer.removeActionListener(this);
-				beep.stop();
-				beep.flush();
-				beep.setFramePosition(0);
-			}
+			cancel();
 		}
 	}
 
@@ -189,7 +195,6 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 		this.fe = fe;
 		idev = fe.getInputStream();
 		odev = fe.getOutputStream();
-		ansbak = new byte[20];
 		paste_delay = 100; // mS, 10 char/sec
 		paste_cr_delay = 1000; // mS, wait after CR
 		_last = new File(System.getProperty("user.dir"));
@@ -201,9 +206,7 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 		setFocusTraversalKeysEnabled(false); // for TAB
 
 		String s = props.getProperty("adm3a_ansbak");
-		if (s != null) {
-			setAnswerBack(s);
-		}
+		setAnswerBack(s);
 		loopback = (props.getProperty("adm3a_loopback") != null);
 		s = props.getProperty("adm3a_log");
 		if (s != null) {
@@ -421,9 +424,17 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 	}
 
 	private void setAnswerBack(String s) {
+		if (s == null) {
+			ansbak = null; // nothing installed
+			return;
+		}
+		// answerback drum allows for character suppression,
+		// so only use as many characters as supplied.
+		// maximum is 32, though.
 		byte[] n = s.getBytes();
+		byte[] d = new byte[32];
 		int y = 0;
-		for (int x = 0; x < n.length && y < 20; ++x) {
+		for (int x = 0; x < n.length && y < 32; ++x) {
 			byte c = n[x];
 			if (c == '\\') {
 				if (x + 1 < n.length) {
@@ -434,34 +445,45 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 					case 'b': c = '\b'; break;
 					case 't': c = '\t'; break;
 					case 'f': c = '\f'; break;
-					case '\'': c = '\''; break;
-					case '"': c = '"'; break;
+					// else just pass character
 					}
 				}
 			}
-			ansbak[y++] = c;
+			d[y++] = c;
 		}
+		ansbak = Arrays.copyOf(d, y);
 	}
 
 	public void envChanged() {
 		restart();
 	}
 
-	public void set_curs_xy(int x, int y) {
-		set_curs_y(y);
-		set_curs_x(x);
-		crt.setCursor(curs_x, curs_y);
+	private void overflow_x() {
+		bell.cancel();
+		if (auto_nl) {
+			curs_x = 0;
+			doLinefeed();
+		} else {
+			curs_x = 79;
+		}
 	}
 
+	// ESC = R C
 	private void set_curs_y(int c) {
-		if (c < 24) {
+		if (c > 23) {
+			curs_y = 0;
+		} else {
 			curs_y = c;
 		}
 	}
 
+	// ESC = R C
 	private void set_curs_x(int c) {
-		if (c >= 80) c = 79;
-		curs_x = c;
+		if (c > 79) {
+			overflow_x();
+		} else {
+			curs_x = c;
+		}
 	}
 
 	private void doLinefeed() {
@@ -540,9 +562,8 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 					bell.ding();
 				}
 				++curs_x;
-			} else if (auto_nl) {
-				curs_x = 0;
-				doLinefeed();
+			} else {
+				overflow_x();
 			}
 		}
 		crt.setCursor(curs_x, curs_y);
