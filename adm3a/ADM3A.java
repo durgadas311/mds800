@@ -55,6 +55,7 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 	boolean ndspace;
 	boolean parity;
 	boolean even;
+	boolean col72_beep;
 
 	class Paster implements Runnable {
 		Thread thr;
@@ -236,6 +237,7 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 		ndspace = false;	// non-destructive space
 		parity = false;
 		even = false;	// default to SPACE if no parity
+		col72_beep = true;
 		s = props.getProperty("adm3a_auto_nl"); // "wrap" at EOL
 		if (s != null) auto_nl = ExtBoolean.parseBoolean(s);
 		s = props.getProperty("adm3a_uc_only"); // keyboard gen only UC
@@ -253,6 +255,8 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 		}
 		s = props.getProperty("adm3a_ep");
 		if (s != null) even = ExtBoolean.parseBoolean(s);
+		s = props.getProperty("adm3a_col72_beep");
+		if (s != null) col72_beep = ExtBoolean.parseBoolean(s);
 
 		JMenuBar mb = new JMenuBar();
 		JMenu mu = new JMenu("Screen");
@@ -531,8 +535,10 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 				c &= 0x5f;
 			}
 			crt.putChar(c, curs_x, curs_y);
-			// TODO: beep at column 72, except if baud > 2400
 			if (curs_x < 79) {
+				if (col72_beep && curs_x == 72) {
+					bell.ding();
+				}
 				++curs_x;
 			} else if (auto_nl) {
 				curs_x = 0;
