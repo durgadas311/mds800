@@ -80,6 +80,7 @@ public class PaperTapePositioner extends JFrame
 				Component friend) {
 		super("PTR");
 		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE); // ...or live view?
+		setResizable(false);
 		setLocationByPlatform(true);
 		if (friend != null) {
 			setLocationRelativeTo(friend);

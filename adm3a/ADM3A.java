@@ -203,6 +203,7 @@ public class ADM3A extends JFrame implements KeyListener, MouseListener,
 
 		getContentPane().setName("ADM3A Emulator");
 		getContentPane().setBackground(new Color(100, 100, 100));
+		setResizable(false);
 		setFocusTraversalKeysEnabled(false); // for TAB
 
 		String s = props.getProperty("adm3a_ansbak");

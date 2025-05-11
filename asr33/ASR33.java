@@ -82,6 +82,7 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 	boolean nonprint;
 	boolean parity;
 	boolean even;
+	int lines;
 
 	class Paster implements Runnable {
 		Thread thr;
@@ -326,6 +327,7 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 		_last = new File(System.getProperty("user.dir"));
 		getContentPane().setName("ASR33 Emulator");
 		getContentPane().setBackground(new Color(100, 100, 100));
+		setResizable(false);
 
 		String s = props.getProperty("asr33_ansbak");
 		setAnswerBack(s);
@@ -350,6 +352,15 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 			rdr_view = Integer.valueOf(s);
 			if (rdr_view < 1) rdr_view = 1;
 			if (rdr_view > 30) rdr_view = 30; // what is practical...
+		}
+		lines = 24;
+		s = props.getProperty("asr33_lines");
+		if (s != null) {
+			lines = Integer.decode(s);
+			if (lines < 10 || lines > 200) {
+				// print error?
+				lines = 24;
+			}
 		}
 
 		// various teletype options
@@ -386,7 +397,7 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 		_help = new GenericHelp("ASR33 Teletype Help", url);
 
 		setLayout(new BorderLayout()); // allow resizing
-		text = new JTextArea(24, 81); // a little wider for breathing room
+		text = new JTextArea(lines, 81); // a little wider for breathing room
 		text.setEditable(false); // this prevents caret... grrr.
 		text.setBackground(Color.white);
 		Font font = new Font("Monospaced", Font.PLAIN, 12);

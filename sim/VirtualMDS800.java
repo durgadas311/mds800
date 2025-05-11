@@ -54,6 +54,7 @@ public class VirtualMDS800 {
 
 		front_end = new JFrame("Virtual MDS-800 Computer");
 		front_end.getContentPane().setName("MDS-800 Emulator");
+		front_end.setResizable(false);
 		front_end.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		front_end.getContentPane().setBackground(new Color(100, 100, 100));
 		MDSFrontPanel fp = new MDSFrontPanel(front_end, props);
