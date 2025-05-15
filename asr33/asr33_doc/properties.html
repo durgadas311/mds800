@@ -59,13 +59,17 @@ Default is "bell.wav".
 <DT>asr33_bell_volume
 <DD>Specifies the audio volume to use for the bell,
 in percent. Default is "50".
-</DD>
 
 <DT>asr33_lines
 <DD>Specifies the number of lines to view in the text window.
 Minimum is 10. Default is 24. Scrolling still allows viewing the entire
 printed text, this property only affects the view size.
 Beware of impractical numbers for your screen size.
+</DD>
+
+<DT>asr33_font_size
+<DD>Specifies the size of the font to use.
+Default is 12. Minimum is 4 and maximum is 30.
 </DD>
 </DL>
 
@@ -112,6 +116,10 @@ Default is off.
 <DD>Selects the state of the 8th bit of keyboard codes.
 Default is on when parity is enabled (EVEN parity),
 off when parity disabled (SPACE parity bit).
+</DD>
+<DT>asr33_col72_bell
+<DD>Used to disable the margin bell after column 72.
+Default is enabled.
 </DD>
 </DL>
 

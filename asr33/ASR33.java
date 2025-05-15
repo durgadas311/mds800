@@ -82,6 +82,7 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 	boolean nonprint;
 	boolean parity;
 	boolean even;
+	boolean col72_bell;
 	int lines;
 
 	class Paster implements Runnable {
@@ -354,12 +355,19 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 			if (rdr_view > 30) rdr_view = 30; // what is practical...
 		}
 		lines = 24;
+		int fz = 12;
 		s = props.getProperty("asr33_lines");
 		if (s != null) {
-			lines = Integer.decode(s);
-			if (lines < 10 || lines > 200) {
-				// print error?
-				lines = 24;
+			int nl = Integer.decode(s);
+			if (nl >= 10 && nl <= 200) {
+				lines = nl;
+			}
+		}
+		s = props.getProperty("asr33_font_size");
+		if (s != null) {
+			int z = Integer.decode(s);
+			if (z >= 4 && z <= 30) {
+				fz = z;
 			}
 		}
 
@@ -372,6 +380,7 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 		nonprint = false;
 		parity = false;
 		even = false;	// default to SPACE if no parity
+		col72_bell = true;
 		s = props.getProperty("asr33_auto_nl"); // "wrap" at EOL
 		if (s != null) auto_nl = ExtBoolean.parseBoolean(s);
 		s = props.getProperty("asr33_auto_rdr"); // reader via DC1/DC3
@@ -384,13 +393,15 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 		if (s != null) lf_on_cr = ExtBoolean.parseBoolean(s);
 		s = props.getProperty("asr33_nonprint"); // print disable button
 		if (s != null) nonprint = ExtBoolean.parseBoolean(s);
-		s = props.getProperty("asr33_pe"); // parity enable
+		s = props.getProperty("asr33_parity"); // parity enable
 		if (s != null) parity = ExtBoolean.parseBoolean(s);
 		if (parity) {
 			even = true; // default to EVEN parity
 		}
-		s = props.getProperty("adm3a_ep"); // parity even (if enabled)
+		s = props.getProperty("asr33_even"); // parity even (if enabled)
 		if (s != null) even = ExtBoolean.parseBoolean(s);
+		s = props.getProperty("asr33_col72_bell");
+		if (s != null) col72_bell = ExtBoolean.parseBoolean(s);
 
 		java.net.URL url;
 		url = this.getClass().getResource("asr33_doc/help.html");
@@ -400,7 +411,8 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 		text = new JTextArea(lines, 81); // a little wider for breathing room
 		text.setEditable(false); // this prevents caret... grrr.
 		text.setBackground(Color.white);
-		Font font = new Font("Monospaced", Font.PLAIN, 12);
+		Font fnt = new Font("Monospaced", Font.PLAIN, 12);
+		Font font = new Font("Monospaced", Font.PLAIN, fz);
 		setupFont(font);
 		text.setCaret(new BlockCaret());
 		text.addKeyListener(this);
@@ -457,7 +469,7 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 		pn.setOpaque(false);
 		mb.add(pn);
 		spinner = new JLabel(spins[0]);
-		spinner.setFont(font);
+		spinner.setFont(fnt);
 		spinner.setBorder(BorderFactory.createBevelBorder(BevelBorder.LOWERED));
 		spinning = 0;
 		mb.add(spinner);
@@ -493,7 +505,7 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 		pun.setOpaque(false);
 		mb.add(pun);
 		pun_cnt = new JLabel("    ");
-		pun_cnt.setFont(font);
+		pun_cnt.setFont(fnt);
 		pun_cnt.setBorder(BorderFactory.createBevelBorder(BevelBorder.LOWERED));
 		mb.add(pun_cnt);
 		pn = new JPanel();
@@ -510,10 +522,10 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 		rdr_start.setFocusable(false);
 		rdr_start.addActionListener(this);
 		rdr_start.setEnabled(false);
-		rdr_start.setOpaque(false);
+		rdr_start.setOpaque(true);
 		mb.add(rdr_start);
 		rdr_cnt = new JLabel("    ");
-		rdr_cnt.setFont(font);
+		rdr_cnt.setFont(fnt);
 		rdr_cnt.setBorder(BorderFactory.createBevelBorder(BevelBorder.LOWERED));
 		mb.add(rdr_cnt);
 
@@ -657,7 +669,7 @@ public class ASR33 extends JFrame implements KeyListener, MouseListener,
 		} else {
 			// stay where we are
 		}
-		if (col == 73) {
+		if (col72_bell && col == 73) {
 			bell.ding();
 		}
 		text.setCaretPosition(carr);
