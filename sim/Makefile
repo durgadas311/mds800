@@ -26,7 +26,7 @@ VirtualMDS800.jar: all $(DOCS) temp
 	jar -cmf Manifest.txt VirtualMDS800.jar *.class \
 		icons/*.png *.rom docs/*.html -C temp .
 
-ASR33_RM = temp/PaperTapePositioner.class
+ASR33_RM = temp/PaperTapePositioner*.class
 ADM3A_RM =
 
 temp: __FRC__
