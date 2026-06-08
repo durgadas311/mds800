@@ -1,3 +1,11 @@
 [submodule "sim/z80cpu"]
 	path = sim/z80cpu
 	url = https://github.com/durgadas311/z80cpu.git
+[submodule "sim/asr33"]
+	path = sim/asr33
+	url = https://github.com/durgadas311/asr33.git
+	branch = master
+[submodule "sim/adm3a"]
+	path = sim/adm3a
+	url = https://github.com/durgadas311/adm3a.git
+	branch = master
