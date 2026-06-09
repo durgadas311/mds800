@@ -14,10 +14,26 @@ public class PaperTapePositioner extends JFrame
 	long savedFP;
 	int idx;
 	int tot;
+	boolean noSeek;
+	boolean top;
 
 	public PaperTapePositioner(WindowListener lstr, RandomAccessFile tape, int zone,
 				Component friend) {
 		super("PTR");
+		setup(lstr, tape, zone, friend, false, false, false);
+	}
+
+	public PaperTapePositioner(WindowListener lstr, RandomAccessFile tape, int zone,
+			Component friend, String name,
+			boolean noSeek, boolean noTail, boolean top) {
+		super(name);
+		setup(lstr, tape, zone, friend, noSeek, noTail, top);
+	}
+
+	private void setup(WindowListener lstr, RandomAccessFile tape, int zone,
+			Component friend, boolean noSeek, boolean noTail, boolean top) {
+		this.noSeek = noSeek;
+		this.top = top;
 		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE); // ...or live view?
 		setResizable(false);
 		setLocationByPlatform(true);
@@ -26,7 +42,6 @@ public class PaperTapePositioner extends JFrame
 		}
 		addWindowListener(this);
 		addWindowListener(lstr);
-		// TODO: allow save/cancel?
 		this.tape = tape;
 		try {
 			savedFP = tape.getFilePointer();
@@ -37,7 +52,10 @@ public class PaperTapePositioner extends JFrame
 			System.exit(1);
 		}
 		idx = -1;	// never equals savedFP
-		ptv = new PaperTapeViewer(zone);
+		ptv = new PaperTapeViewer(zone, -1, top, noTail);
+		if (top) {
+			ptv.update(ptv.win - 1, ptv.win);
+		}
 		add(ptv);
 		addKeyListener(this);
 		addMouseWheelListener(this);
@@ -54,6 +72,9 @@ public class PaperTapePositioner extends JFrame
 
 		if (newIdx == idx) {
 			return;
+		}
+		if (top) {
+			pos -= ptv.buf;
 		}
 		if (pos < 0) {
 			_beg = -pos;
@@ -89,6 +110,9 @@ public class PaperTapePositioner extends JFrame
 			_idx = tot - 1;;
 		} else if (c == KeyEvent.VK_ENTER) {
 			dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING));
+		} else if (c == KeyEvent.VK_DELETE) {
+			noSeek = true;
+			dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING));
 		} else {
 			return;
 		}
@@ -114,6 +138,9 @@ public class PaperTapePositioner extends JFrame
 	public void windowDeiconified(WindowEvent e) { }
 	public void windowDeactivated(WindowEvent e) { }
 	public void windowClosing(WindowEvent e) {
+		if (noSeek) {
+			idx = (int)savedFP;
+		}
 		try {
 			tape.seek(idx);
 		} catch (Exception ee) {}

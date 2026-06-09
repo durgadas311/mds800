@@ -9,20 +9,23 @@ class PaperTapeViewer extends JPanel {
 	int data = 11;	// @0.072/0.1 = 10.8/15
 	int sprk = 7;	// @0.046/0.1 = 6.9/15
 	public byte[] tapeBuf;
-	public int win;
-	public int buf;
+	public int win; // read-only
+	public int buf; // read-only
 	public int beg;	// use update(beg, end) to change
 	public int end;	// use update(beg, end) to change
 	int tapew;
 	int tapeh;
-	int marg;
+	public int marg; // read-only
 	int curs;
+	Color curs_color = Color.red;
 	int l, t, b, bb, m;	// for paint()
 	int td;
 	Polygon head, hp;
 	Polygon tail, tp;
+	boolean noTail;
 
-	private void setup(int zone, int size, boolean top) {
+	private void setup(int zone, int size, boolean top, boolean noTail) {
+		this.noTail = noTail;
 		cell = (int)Math.round((float)size / 10f);
 		data = (int)Math.round(0.72f * (float)cell);
 		sprk = (int)Math.round(0.46f * (float)cell);
@@ -32,11 +35,12 @@ class PaperTapeViewer extends JPanel {
 		tapew =  10 * cell;
 		tapeh = win * cell;
 		if (top) {
+			curs_color = Color.green;
 			curs = 0;
 		} else {
 			curs = buf * cell;
 		}
-		marg = 20;	// total horiz margins (10+10)
+		marg = 2 * cell;	// 2x total horiz margins
 		m = marg / 2 + cell - data / 2;
 		setPreferredSize(new Dimension(tapew + marg, tapeh));
 		setBackground(Color.gray);
@@ -56,17 +60,20 @@ class PaperTapeViewer extends JPanel {
 		update(0, 0);
 	}
 
-	public PaperTapeViewer(int zone) {
+	public PaperTapeViewer(int zone, boolean noTail) {
 		super();
 		// "standard" size, tape width 150 pixels
-		setup(zone, 150, false);
+		setup(zone, 150, false, noTail);
 	}
 
 	// 'size' is desired width of tape in pixels.
 	// 'top' true to place cursor at top, for punch.
-	public PaperTapeViewer(int zone, int size, boolean top) {
+	public PaperTapeViewer(int zone, int size, boolean top, boolean noTail) {
 		super();
-		setup(zone, size, top);
+		if (size <= 0) {
+			size = 150;
+		}
+		setup(zone, size, top, noTail);
 	}
 
 	public void update(int _beg, int _end) {
@@ -98,10 +105,10 @@ class PaperTapeViewer extends JPanel {
 		if (t + td < tapeh) {
 			g2d.fillPolygon(hp);
 		}
-		if (td > 0 && t > 0) {
+		if (!noTail && td > 0 && t > 0) {
 			g2d.fillPolygon(tp);
 		}
-		g2d.setColor(Color.red); // cursor - fixed position
+		g2d.setColor(curs_color); // cursor - fixed position
 		g2d.drawRect(0, curs, tapew + marg - 1, cell);
 		g2d.setColor(Color.black);
 		// draw tapeBuf backwards... End is at top...
