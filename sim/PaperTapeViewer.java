@@ -11,13 +11,16 @@ class PaperTapeViewer extends JPanel {
 	public byte[] tapeBuf;
 	public int win;
 	public int buf;
-	public int beg;
-	public int end;
+	public int beg;	// use update(beg, end) to change
+	public int end;	// use update(beg, end) to change
 	int tapew;
 	int tapeh;
 	int marg;
 	int curs;
 	int l, t, b, bb, m;	// for paint()
+	int td;
+	Polygon head, hp;
+	Polygon tail, tp;
 
 	private void setup(int zone, int size, boolean top) {
 		cell = (int)Math.round((float)size / 10f);
@@ -34,8 +37,23 @@ class PaperTapeViewer extends JPanel {
 			curs = buf * cell;
 		}
 		marg = 20;	// total horiz margins (10+10)
+		m = marg / 2 + cell - data / 2;
 		setPreferredSize(new Dimension(tapew + marg, tapeh));
 		setBackground(Color.gray);
+
+		head = new Polygon();
+		head.addPoint(marg / 2, 0);
+		head.addPoint(marg / 2 + tapew, 0);
+		head.addPoint(marg / 2 + tapew / 2, 3 * cell);
+
+		tail = new Polygon();
+		tail.addPoint(marg / 2, 0);
+		tail.addPoint(marg / 2, -3 * cell);
+		tail.addPoint(marg / 2 + tapew / 2, -1);
+		tail.addPoint(marg / 2 + tapew, -3 * cell);
+		tail.addPoint(marg / 2 + tapew, 0);
+
+		update(0, 0);
 	}
 
 	public PaperTapeViewer(int zone) {
@@ -51,6 +69,22 @@ class PaperTapeViewer extends JPanel {
 		setup(zone, size, top);
 	}
 
+	public void update(int _beg, int _end) {
+		beg = _beg;
+		end = _end;
+		t = (win - end) * cell;
+		td = (end - beg) * cell;
+		b = (win - beg) * cell;
+		if (t + td < tapeh) {
+			hp = new Polygon(head.xpoints, head.ypoints, head.npoints);
+			hp.translate(0, t + td);
+		}
+		if (t > 0) {
+			tp = new Polygon(tail.xpoints, tail.ypoints, tail.npoints);
+			tp.translate(0, t);
+		}
+	}
+
 	// hole order: 0 1 2 s 3 4 5 6 7 8
 	public void paint(Graphics g) {
 		super.paint(g);
@@ -58,12 +92,15 @@ class PaperTapeViewer extends JPanel {
 		g2d.addRenderingHints(new RenderingHints(
 			RenderingHints.KEY_ANTIALIASING,
 			RenderingHints.VALUE_ANTIALIAS_ON));
-		t = (win - end) * cell;
-		b = (win - beg) * cell;
-		m = marg / 2 + cell - data / 2;
 		g2d.setColor(buff);	// paper tape
 		// only draw amount of tape present
-		g2d.fillRect(marg / 2, t, tapew, (end - beg) * cell);
+		g2d.fillRect(marg / 2, t, tapew, td);
+		if (t + td < tapeh) {
+			g2d.fillPolygon(hp);
+		}
+		if (td > 0 && t > 0) {
+			g2d.fillPolygon(tp);
+		}
 		g2d.setColor(Color.red); // cursor - fixed position
 		g2d.drawRect(0, curs, tapew + marg - 1, cell);
 		g2d.setColor(Color.black);

@@ -19,10 +19,16 @@ public class ADM3ASerial implements TermContainer, PeripheralContainer, SerialDe
 	static int index = 1;
 
 	public ADM3ASerial(Properties props, Vector<String> argv, VirtualUART uart) {
-		String nm;
-		if (argv.size() > 1) {
-			nm = argv.get(1);
-		} else {
+		String nm = null;
+		for (String arg : argv) {
+			if (arg.indexOf("=") > 0) {
+				String[] ss = arg.split("=", 2);
+				props.setProperty("adm3a_" + ss[0], ss[1]);
+			} else {
+				nm = arg;
+			}
+		}
+		if (nm == null) {
 			nm = String.format("%d", index++);
 		}
 		title = nm;
