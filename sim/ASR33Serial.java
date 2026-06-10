@@ -5,6 +5,8 @@ import java.awt.event.*;
 import javax.swing.*;
 import java.io.*;
 import java.util.Properties;
+import java.util.List;
+import java.util.Arrays;
 import java.util.Vector;
 
 public class ASR33Serial implements TermContainer, PeripheralContainer, SerialDevice {
@@ -18,16 +20,13 @@ public class ASR33Serial implements TermContainer, PeripheralContainer, SerialDe
 
 	static int index = 1;
 
+	List<String> boolArgs = Arrays.asList();
+	String[] seqArgs = new String[]{ "name" };
+
 	public ASR33Serial(Properties props, Vector<String> argv, VirtualUART uart) {
-		String nm = null;
-		for (String arg : argv) {
-			if (arg.indexOf("=") > 0) {
-				String[] ss = arg.split("=", 2);
-				props.setProperty("asr33_" + ss[0], ss[1]);
-			} else {
-				nm = arg;
-			}
-		}
+		String[] args = argv.subList(1, argv.size()).toArray(new String[0]);
+		ASR33.processArgs(props, args, boolArgs, seqArgs);
+		String nm = props.getProperty("asr33_name");
 		if (nm == null) {
 			nm = String.format("%d", index++);
 		}

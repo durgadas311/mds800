@@ -5,6 +5,8 @@ import java.awt.event.*;
 import javax.swing.*;
 import java.io.*;
 import java.util.Properties;
+import java.util.List;
+import java.util.Arrays;
 import java.util.Vector;
 
 public class ADM3ASerial implements TermContainer, PeripheralContainer, SerialDevice {
@@ -18,16 +20,14 @@ public class ADM3ASerial implements TermContainer, PeripheralContainer, SerialDe
 
 	static int index = 1;
 
+	List<String> boolArgs = Arrays.asList();
+	String[] seqArgs = new String[]{ "name" };
+
 	public ADM3ASerial(Properties props, Vector<String> argv, VirtualUART uart) {
-		String nm = null;
-		for (String arg : argv) {
-			if (arg.indexOf("=") > 0) {
-				String[] ss = arg.split("=", 2);
-				props.setProperty("adm3a_" + ss[0], ss[1]);
-			} else {
-				nm = arg;
-			}
-		}
+		// argv.get(0) is this class name... omit it...
+		String[] args = argv.subList(1, argv.size()).toArray(new String[0]);
+		ADM3A.processArgs(props, args, boolArgs, seqArgs);
+		String nm = props.getProperty("adm3a_name");
 		if (nm == null) {
 			nm = String.format("%d", index++);
 		}
