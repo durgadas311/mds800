@@ -1,8 +1,11 @@
 # Full-sized system
 
 mds800_ram = 64
-crt_att = TelnetSerial 192.168.1.17 31123
-tty_att = TelnetSerial 192.168.1.17 31124
+crt_att = ADM3ASerial CRT
+tty_att = ASR33Serial TTY live_ppt
+# Examples for above using telnet (TCP/IP socket)
+#crt_att = TelnetSerial 192.168.1.17 31123
+#tty_att = TelnetSerial 192.168.1.17 31124
 
 # Set default iobyte RDR/PUN for high-speed paper tape unit
 mds800_iobyte = 0110
