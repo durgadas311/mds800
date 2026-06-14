@@ -14,34 +14,34 @@ public class PaperTapePositioner extends JFrame
 	long savedFP;
 	int idx;
 	int tot;
-	boolean noSeek;
 	boolean top;
 
 	public PaperTapePositioner(WindowListener lstr, RandomAccessFile tape, int zone,
 				Component friend) {
 		super("PTR");
-		setup(lstr, tape, zone, friend, false, false, false);
+		setup(lstr, tape, zone, friend, false);
 	}
 
 	public PaperTapePositioner(WindowListener lstr, RandomAccessFile tape, int zone,
-			Component friend, String name,
-			boolean noSeek, boolean noTail, boolean top) {
+			Component friend, String name, boolean punch) {
 		super(name);
-		setup(lstr, tape, zone, friend, noSeek, noTail, top);
+		setup(lstr, tape, zone, friend, punch);
 	}
 
 	private void setup(WindowListener lstr, RandomAccessFile tape, int zone,
-			Component friend, boolean noSeek, boolean noTail, boolean top) {
-		this.noSeek = noSeek;
-		this.top = top;
+			Component friend, boolean punch) {
+		this.top = punch;	// active position is TOP for punches
 		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE); // ...or live view?
 		setResizable(false);
 		setLocationByPlatform(true);
 		if (friend != null) {
 			setLocationRelativeTo(friend);
 		}
-		addWindowListener(this);
-		addWindowListener(lstr);
+		if (!punch) {
+			// Only readers act on close
+			addWindowListener(this);
+			addWindowListener(lstr);
+		}
 		this.tape = tape;
 		try {
 			savedFP = tape.getFilePointer();
@@ -52,7 +52,7 @@ public class PaperTapePositioner extends JFrame
 			System.exit(1);
 		}
 		idx = -1;	// never equals savedFP
-		ptv = new PaperTapeViewer(zone, -1, top, noTail);
+		ptv = new PaperTapeViewer(zone, -1, punch);
 		if (top) {
 			ptv.update(ptv.win - 1, ptv.win);
 		}
@@ -111,7 +111,9 @@ public class PaperTapePositioner extends JFrame
 		} else if (c == KeyEvent.VK_ENTER) {
 			dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING));
 		} else if (c == KeyEvent.VK_DELETE) {
-			noSeek = true;
+			// restore original file position
+			// (who knows where we are now)
+			idx = (int)savedFP;
 			dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING));
 		} else {
 			return;
@@ -138,9 +140,6 @@ public class PaperTapePositioner extends JFrame
 	public void windowDeiconified(WindowEvent e) { }
 	public void windowDeactivated(WindowEvent e) { }
 	public void windowClosing(WindowEvent e) {
-		if (noSeek) {
-			idx = (int)savedFP;
-		}
 		try {
 			tape.seek(idx);
 		} catch (Exception ee) {}

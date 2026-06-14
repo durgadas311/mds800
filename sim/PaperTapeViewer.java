@@ -8,6 +8,7 @@ class PaperTapeViewer extends JPanel {
 	int cell = 15; // spacing of each dot (H/V), 0.1"
 	int data = 11;	// @0.072/0.1 = 10.8/15
 	int sprk = 7;	// @0.046/0.1 = 6.9/15
+	int dspr = 2;	// (data - sprk) / 2
 	public byte[] tapeBuf;
 	public int win; // read-only
 	public int buf; // read-only
@@ -18,24 +19,25 @@ class PaperTapeViewer extends JPanel {
 	public int marg; // read-only
 	int curs;
 	Color curs_color = Color.red;
+	boolean curs_solid;
 	int l, t, b, bb, m;	// for paint()
 	int td;
 	Polygon head, hp;
 	Polygon tail, tp;
-	boolean noTail;
 
-	private void setup(int zone, int size, boolean top, boolean noTail) {
-		this.noTail = noTail;
+	private void setup(int zone, int size, boolean punch) {
 		cell = (int)Math.round((float)size / 10f);
 		data = (int)Math.round(0.72f * (float)cell);
 		sprk = (int)Math.round(0.46f * (float)cell);
+		dspr = (int)Math.round(((float)data - sprk) / 2f);
 		buf = zone; // chars before/after cursor
 		win = buf * 2 + 1;
 		tapeBuf = new byte[win];
 		tapew =  10 * cell;
 		tapeh = win * cell;
-		if (top) {
-			curs_color = Color.green;
+		if (punch) {
+			curs_color = new Color(128, 128, 128, 128);
+			curs_solid = true;
 			curs = 0;
 		} else {
 			curs = buf * cell;
@@ -50,30 +52,32 @@ class PaperTapeViewer extends JPanel {
 		head.addPoint(marg / 2 + tapew, 0);
 		head.addPoint(marg / 2 + tapew / 2, 3 * cell);
 
-		tail = new Polygon();
-		tail.addPoint(marg / 2, 0);
-		tail.addPoint(marg / 2, -3 * cell);
-		tail.addPoint(marg / 2 + tapew / 2, -1);
-		tail.addPoint(marg / 2 + tapew, -3 * cell);
-		tail.addPoint(marg / 2 + tapew, 0);
-
+		// punches don't have visible tail
+		if (!punch) {
+			tail = new Polygon();
+			tail.addPoint(marg / 2, 0);
+			tail.addPoint(marg / 2, -3 * cell);
+			tail.addPoint(marg / 2 + tapew / 2, -1);
+			tail.addPoint(marg / 2 + tapew, -3 * cell);
+			tail.addPoint(marg / 2 + tapew, 0);
+		}
 		update(0, 0);
 	}
 
-	public PaperTapeViewer(int zone, boolean noTail) {
+	public PaperTapeViewer(int zone, boolean punch) {
 		super();
 		// "standard" size, tape width 150 pixels
-		setup(zone, 150, false, noTail);
+		setup(zone, 150, punch);
 	}
 
 	// 'size' is desired width of tape in pixels.
-	// 'top' true to place cursor at top, for punch.
-	public PaperTapeViewer(int zone, int size, boolean top, boolean noTail) {
+	// 'punch' true to create viewer for paper tape punches
+	public PaperTapeViewer(int zone, int size, boolean punch) {
 		super();
 		if (size <= 0) {
 			size = 150;
 		}
-		setup(zone, size, top, noTail);
+		setup(zone, size, punch);
 	}
 
 	public void update(int _beg, int _end) {
@@ -86,7 +90,7 @@ class PaperTapeViewer extends JPanel {
 			hp = new Polygon(head.xpoints, head.ypoints, head.npoints);
 			hp.translate(0, t + td);
 		}
-		if (t > 0) {
+		if (tail != null && t > 0) {
 			tp = new Polygon(tail.xpoints, tail.ypoints, tail.npoints);
 			tp.translate(0, t);
 		}
@@ -105,11 +109,15 @@ class PaperTapeViewer extends JPanel {
 		if (t + td < tapeh) {
 			g2d.fillPolygon(hp);
 		}
-		if (!noTail && td > 0 && t > 0) {
+		if (tp != null && td > 0 && t > 0) {
 			g2d.fillPolygon(tp);
 		}
 		g2d.setColor(curs_color); // cursor - fixed position
-		g2d.drawRect(0, curs, tapew + marg - 1, cell);
+		if (curs_solid) {
+			g2d.fillRect(0, curs, tapew + marg - 1, cell);
+		} else {
+			g2d.drawRect(0, curs, tapew + marg - 1, cell);
+		}
 		g2d.setColor(Color.black);
 		// draw tapeBuf backwards... End is at top...
 		l = end - 1;
@@ -118,7 +126,7 @@ class PaperTapeViewer extends JPanel {
 			for (int x = 0; x < 9; ++x) {
 				int xx = m + (x * cell);
 				if (x == 3) {
-					g2d.fillOval(xx + 2, y + 2, sprk, sprk);
+					g2d.fillOval(xx + dspr, y + dspr, sprk, sprk);
 					continue;
 				}
 				if ((tapeBuf[l] & (1 << bb)) != 0) {
